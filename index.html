@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NetHub &middot; Topolog&iacute;a de red</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand" id="brand-logo"></div>
+
+  <div class="device-palette" id="device-palette"></div>
+
+  <div class="toolbar-actions">
+    <div class="btn-group">
+      <button class="icon-btn" id="btn-zoom-out" title="Alejar"></button>
+      <button class="icon-btn" id="btn-fit" title="Ajustar a la vista"></button>
+      <button class="icon-btn" id="btn-zoom-in" title="Acercar"></button>
+    </div>
+    <span class="toolbar-divider"></span>
+    <button class="btn btn-ghost" id="btn-import" title="Importar topolog&iacute;a desde JSON"></button>
+    <input type="file" id="file-import" accept="application/json,.json" hidden />
+    <button class="btn btn-ghost" id="btn-export" title="Exportar topolog&iacute;a a JSON"></button>
+    <span class="toolbar-divider"></span>
+    <button class="btn btn-danger-ghost" id="btn-clear" title="Borrar todos los datos guardados"></button>
+  </div>
+</header>
+
+<main class="app-main">
+  <div class="canvas-viewport" id="canvas-viewport">
+    <div class="canvas-world" id="canvas-world">
+      <svg class="links-layer" id="links-layer"></svg>
+      <div class="nodes-layer" id="nodes-layer"></div>
+      <svg class="links-layer" id="elevated-links-layer"></svg>
+    </div>
+    <div class="link-toolbar-layer" id="link-toolbar-layer"></div>
+    <div class="empty-hint" id="empty-hint" hidden>
+      <div class="empty-hint-icon"></div>
+      <h2>Tu topolog&iacute;a est&aacute; vac&iacute;a</h2>
+      <p>A&ntilde;ade tu primer dispositivo desde la barra superior para empezar a construir el mapa de tu red.</p>
+    </div>
+  </div>
+
+  <aside class="side-panel" id="side-panel"></aside>
+</main>
+
+<script src="js/icons.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/state.js"></script>
+<script src="js/topology.js"></script>
+<script src="js/panel.js"></script>
+<script src="js/app.js"></script>
+<script>
+  (function () {
+    var Icons = window.NetHub.Icons;
+    document.getElementById('brand-logo').innerHTML = Icons.svg('network', 22) + '<span>NetHub</span>';
+    document.getElementById('btn-zoom-out').innerHTML = Icons.svg('zoomOut', 16);
+    document.getElementById('btn-fit').innerHTML = Icons.svg('fit', 16);
+    document.getElementById('btn-zoom-in').innerHTML = Icons.svg('zoomIn', 16);
+    document.getElementById('btn-import').innerHTML = Icons.svg('upload', 15) + '<span>Importar</span>';
+    document.getElementById('btn-export').innerHTML = Icons.svg('download', 15) + '<span>Exportar</span>';
+    document.getElementById('btn-clear').innerHTML = Icons.svg('trash', 15) + '<span>Borrar datos</span>';
+    document.querySelector('.empty-hint-icon').innerHTML = Icons.svg('network', 30);
+  })();
+</script>
+</body>
+</html>
