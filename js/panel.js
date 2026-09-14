@@ -122,6 +122,10 @@
     const typeOptions = Object.keys(DEVICE_TYPES).map((k) =>
       '<option value="' + k + '"' + (k === d.type ? ' selected' : '') + '>' + DEVICE_TYPES[k].label + '</option>').join('');
 
+    const roleField = d.type !== 'isp'
+      ? '<div class="field"><span class="field-label">Función<span class="hint">Se muestra como etiqueta en el nodo</span></span><input data-field="role" type="text" value="' + UI.escapeHtml(d.role) + '" placeholder="ej. Servidor DNS, Gateway principal…"/></div>'
+      : '';
+
     const ispField = d.type === 'isp'
       ? '<div class="field"><span class="field-label">Proveedor</span><select data-field="isp"><option value="">Selecciona un proveedor…</option>' +
         ISP_PROVIDERS.map((p) => '<option value="' + p.id + '"' + (p.id === d.isp ? ' selected' : '') + '>' + UI.escapeHtml(p.name) + '</option>').join('') +
@@ -150,6 +154,7 @@
         '<div class="field"><span class="field-label">Tipo</span><select data-field="type">' + typeOptions + '</select></div>' +
         '<div class="field"><span class="field-label">Sistema operativo</span><input data-field="os" type="text" value="' + UI.escapeHtml(d.os) + '" placeholder="ej. OpenWrt, Debian 12"/></div>' +
       '</div>' +
+      roleField +
       ispField +
       ispImageField +
       '<div class="field"><span class="field-label">URL del panel de configuración</span><input data-field="configUrl" type="text" value="' + UI.escapeHtml(d.configUrl) + '" placeholder="http://192.168.1.1"/></div>' +
@@ -170,6 +175,8 @@
     wrap.querySelector('[data-field="name"]').addEventListener('input', (e) => { d.name = e.target.value; self._touch(d.id); });
     wrap.querySelector('[data-field="type"]').addEventListener('change', (e) => { d.type = e.target.value; self._touch(d.id, true); });
     wrap.querySelector('[data-field="os"]').addEventListener('input', (e) => { d.os = e.target.value; self._touch(d.id); });
+    const roleInput = wrap.querySelector('[data-field="role"]');
+    if (roleInput) roleInput.addEventListener('input', (e) => { d.role = e.target.value; self.persist(); self.onDeviceChanged(d.id); });
     const configUrlInput = wrap.querySelector('[data-field="configUrl"]');
     configUrlInput.addEventListener('input', (e) => { d.configUrl = e.target.value.trim(); self._touch(d.id); });
     configUrlInput.addEventListener('blur', () => self._render());

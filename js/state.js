@@ -113,6 +113,7 @@
         type: DEVICE_TYPES[type] ? type : 'host',
         name: meta.label,
         os: '',
+        role: '',
         isp: '',
         ispImage: '',
         x: Math.round(x), y: Math.round(y),

@@ -364,6 +364,7 @@ a { color: var(--accent); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.node-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; }
 
 /* Anchor points: four fixed dots on a node's own edge, revealed on hover.
    Drag from one to start a connection, or drop a dragged link end onto one. */

@@ -28,6 +28,7 @@
       if (!Array.isArray(d.children)) d.children = [];
       if (typeof d.x !== 'number') d.x = 0;
       if (typeof d.y !== 'number') d.y = 0;
+      if (typeof d.role !== 'string') d.role = '';
       if (typeof d.isp !== 'string') d.isp = '';
       if (typeof d.ispImage !== 'string') d.ispImage = '';
       normalizeIfaces(d.interfaces);

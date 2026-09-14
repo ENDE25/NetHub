@@ -262,6 +262,8 @@
         '</div>';
       }).join('');
 
+      const roleColor = d.role ? UI.colorForText(d.role) : null;
+
       el.innerHTML =
         '<div class="node-head">' +
           '<span class="node-icon">' + Icons.svg(meta.icon, 18) + '</span>' +
@@ -270,6 +272,9 @@
             '<span class="node-type">' + meta.label + (d.os ? ' &middot; ' + UI.escapeHtml(d.os) : '') + '</span>' +
           '</div>' +
         '</div>' +
+        (d.role ? '<div class="node-chips">' +
+          '<span class="chip role-chip" style="color:' + roleColor + ';border-color:' + roleColor + ';background:' + roleColor + '1a">' + UI.escapeHtml(d.role) + '</span>' +
+        '</div>' : '') +
         (childrenHtml ? '<div class="node-children">' + childrenHtml + '</div>' : '') +
         (d.configUrl ? '<div class="node-foot">' +
           '<button type="button" class="panel-badge" data-role="open-panel" data-url="' + UI.escapeHtml(d.configUrl) + '" title="Abrir panel en una pestaña nueva">' + Icons.svg('externalLink', 11) + 'Panel</button>' +
@@ -510,8 +515,8 @@
     this.elevatedLinksLayer.appendChild(hit);
 
     const totalLen = Math.hypot(bx2 - ax2, by2 - ay2) || 1;
-    this._renderEndpointTags(link.a, anchorA, refAx, refAy, totalLen, off.x, off.y, this.elevatedLinksLayer);
-    this._renderEndpointTags(link.b, anchorB, refBx, refBy, totalLen, off.x, off.y, this.elevatedLinksLayer);
+    this._renderEndpointTags(link.a, anchorA, refAx, refAy, totalLen, off.x, off.y, this.elevatedLinksLayer, boxA.nested);
+    this._renderEndpointTags(link.b, anchorB, refBx, refBy, totalLen, off.x, off.y, this.elevatedLinksLayer, boxB.nested);
 
     if (link.id === this.selectedLinkId) this._renderLinkHandles(link, ax2, ay2, bx2, by2);
   };
@@ -534,7 +539,7 @@
   // the name is nudged above the line and the IP below it — further out, clear of
   // the node — so neither sits on the cable or on top of each other; top/bottom
   // exits don't need that since both labels already sit along the cable itself.
-  Topology.prototype._renderEndpointTags = function (endpoint, anchor, otherX, otherY, totalLen, offX, offY, layer) {
+  Topology.prototype._renderEndpointTags = function (endpoint, anchor, otherX, otherY, totalLen, offX, offY, layer, nested) {
     const found = findEntity(this.state(), endpoint.deviceId);
     const entity = found && found.entity;
     const iface = entity && (entity.interfaces || []).find((i) => i.id === endpoint.interfaceId);
@@ -546,19 +551,24 @@
     const ux = dx / len, uy = dy / len;
     const sideways = Math.abs(ux) > Math.abs(uy);
     const maxOut = totalLen * 0.4;
+    // A VM/container's edge sits flush with its host's own card, so the usual
+    // out-distance only reaches the card border — a centered label still bleeds
+    // half its width back over the host. Nested endpoints get extra clearance
+    // so the whole tag lands clear of the host card, not just its anchor point.
+    const nestedPad = nested ? 28 : 0;
 
     // ISP nodes don't carry an interface-name label — only the IP, if set.
     // Sideways exits need a much bigger along-cable distance too, not just a
     // vertical nudge: a short label centered too close to the edge still
     // overlaps the node's own border with its near half.
     if (entity.type !== 'isp') {
-      const nameOut = Math.min(sideways ? 20 : 8, maxOut);
+      const nameOut = Math.min(sideways ? 20 : 8, maxOut) + nestedPad;
       const namePos = this._tagPosition(baseX, baseY, ux, uy, nameOut, sideways ? -13 : 0);
       this._createLinkText(iface.name, 'iface-tag', namePos.x, namePos.y, layer);
     }
 
     if (iface.ip) {
-      const ipOut = Math.min(sideways ? 40 : 26, maxOut);
+      const ipOut = Math.min(sideways ? 40 : 26, maxOut) + nestedPad;
       const ipPos = this._tagPosition(baseX, baseY, ux, uy, ipOut, sideways ? 13 : 0);
       this._createLinkText(iface.ip, 'ip-tag', ipPos.x, ipPos.y, layer);
     }
