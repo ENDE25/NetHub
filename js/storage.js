@@ -21,6 +21,10 @@
     if (Array.isArray(parsed.vpns)) state.vpns = parsed.vpns;
     if (Array.isArray(parsed.links)) state.links = parsed.links;
     if (parsed.view && typeof parsed.view.zoom === 'number') state.view = parsed.view;
+    const legacyVpnIps = {};
+    (Array.isArray(parsed.vpns) ? parsed.vpns : []).forEach(v => {
+      if (v && typeof v.id === 'string' && typeof v.ip === 'string' && v.ip.trim()) legacyVpnIps[v.id] = v.ip.trim();
+    });
     const VALID_SIDES = ['top', 'right', 'bottom', 'left'];
     const normalizeIfaces = (ifaces) => ifaces.forEach(i => {
       if (!VALID_SIDES.includes(i.side)) i.side = '';
@@ -34,10 +38,18 @@
       if (typeof d.isp !== 'string') d.isp = '';
       if (typeof d.ispImage !== 'string') d.ispImage = '';
       if (!Array.isArray(d.vpns)) d.vpns = [];
+      if (!d.vpnIps || typeof d.vpnIps !== 'object' || Array.isArray(d.vpnIps)) d.vpnIps = {};
+      d.vpns.forEach(id => {
+        if (!d.vpnIps[id] && legacyVpnIps[id]) d.vpnIps[id] = legacyVpnIps[id];
+      });
       normalizeIfaces(d.interfaces);
       d.children.forEach(c => {
         if (typeof c.role !== 'string') c.role = '';
         if (!Array.isArray(c.vpns)) c.vpns = [];
+        if (!c.vpnIps || typeof c.vpnIps !== 'object' || Array.isArray(c.vpnIps)) c.vpnIps = {};
+        c.vpns.forEach(id => {
+          if (!c.vpnIps[id] && legacyVpnIps[id]) c.vpnIps[id] = legacyVpnIps[id];
+        });
         if (!Array.isArray(c.interfaces)) c.interfaces = [];
         normalizeIfaces(c.interfaces);
       });
@@ -45,8 +57,7 @@
     state.vpns = state.vpns.filter(v => v && typeof v.id === 'string').map(v => ({
       id: v.id,
       name: typeof v.name === 'string' && v.name.trim() ? v.name.trim() : 'VPN',
-      color: /^#[0-9a-f]{6}$/i.test(v.color || '') ? v.color : '#2ad9b8',
-      ip: typeof v.ip === 'string' ? v.ip.trim() : ''
+      color: /^#[0-9a-f]{6}$/i.test(v.color || '') ? v.color : '#2ad9b8'
     }));
     return state;
   }

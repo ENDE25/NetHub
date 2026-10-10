@@ -261,14 +261,13 @@
           '<label class="vpn-row" style="--vpn-color:' + vpn.color + '">' +
             '<input type="checkbox" data-role="vpn-toggle" data-vpn-id="' + UI.escapeHtml(vpn.id) + '"' + ((entity.vpns || []).includes(vpn.id) ? ' checked' : '') + '/>' +
             '<span class="vpn-swatch"></span><span class="vpn-name">' + UI.escapeHtml(vpn.name) + '</span>' +
-            '<input type="text" class="vpn-ip-input" data-role="vpn-ip" data-vpn-id="' + UI.escapeHtml(vpn.id) + '" value="' + UI.escapeHtml(vpn.ip || '') + '" placeholder="IP VPN"/>' +
+            '<input type="text" class="vpn-ip-input" data-role="vpn-ip" data-vpn-id="' + UI.escapeHtml(vpn.id) + '" value="' + UI.escapeHtml((entity.vpnIps && entity.vpnIps[vpn.id]) || '') + '" placeholder="IP de este host"/>' +
             '<button type="button" class="icon-btn danger" data-role="vpn-delete" data-vpn-id="' + UI.escapeHtml(vpn.id) + '" title="Eliminar VPN">' + Icons.svg('trash', 13) + '</button>' +
           '</label>'
         ).join('') : '<span class="field-note">Todavía no hay VPNs creadas.</span>') +
       '</div>' +
       '<div class="add-vpn-row">' +
         '<input type="text" data-role="new-vpn-name" placeholder="Nombre de la nueva VPN"/>' +
-        '<input type="text" data-role="new-vpn-ip" placeholder="IP VPN"/>' +
         '<input type="color" data-role="new-vpn-color" value="#2ad9b8" title="Color de la VPN"/>' +
         '<button type="button" class="btn btn-ghost" data-role="add-vpn">' + Icons.svg('plus', 14) + '<span>Crear</span></button>' +
       '</div>';
@@ -279,16 +278,21 @@
     wrap.querySelectorAll('[data-role="vpn-toggle"]').forEach((toggle) => {
       toggle.addEventListener('change', () => {
         entity.vpns = entity.vpns || [];
+        entity.vpnIps = entity.vpnIps || {};
         if (toggle.checked && !entity.vpns.includes(toggle.dataset.vpnId)) entity.vpns.push(toggle.dataset.vpnId);
-        if (!toggle.checked) entity.vpns = entity.vpns.filter((id) => id !== toggle.dataset.vpnId);
+        if (!toggle.checked) {
+          entity.vpns = entity.vpns.filter((id) => id !== toggle.dataset.vpnId);
+          delete entity.vpnIps[toggle.dataset.vpnId];
+        }
         self._touch(touchId, true);
       });
     });
     wrap.querySelectorAll('[data-role="vpn-ip"]').forEach((input) => {
       input.addEventListener('input', () => {
-        const vpn = (self.state().vpns || []).find((item) => item.id === input.dataset.vpnId);
-        if (!vpn) return;
-        vpn.ip = input.value.trim();
+        entity.vpnIps = entity.vpnIps || {};
+        const value = input.value.trim();
+        if (value) entity.vpnIps[input.dataset.vpnId] = value;
+        else delete entity.vpnIps[input.dataset.vpnId];
         self.persist();
         self.onDeviceChanged(touchId);
       });
@@ -308,7 +312,11 @@
             state.vpns = state.vpns.filter((item) => item.id !== vpn.id);
             state.devices.forEach((device) => {
               device.vpns = (device.vpns || []).filter((id) => id !== vpn.id);
-              device.children.forEach((child) => { child.vpns = (child.vpns || []).filter((id) => id !== vpn.id); });
+              if (device.vpnIps) delete device.vpnIps[vpn.id];
+              device.children.forEach((child) => {
+                child.vpns = (child.vpns || []).filter((id) => id !== vpn.id);
+                if (child.vpnIps) delete child.vpnIps[vpn.id];
+              });
             });
             self._touch(touchId, true);
           }
@@ -321,12 +329,12 @@
       if (!name) { nameInput.focus(); return; }
       const vpn = global.NetHub.Factory.vpn(
         name,
-        wrap.querySelector('[data-role="new-vpn-color"]').value,
-        wrap.querySelector('[data-role="new-vpn-ip"]').value.trim()
+        wrap.querySelector('[data-role="new-vpn-color"]').value
       );
       const state = self.state();
       state.vpns.push(vpn);
       entity.vpns = entity.vpns || [];
+      entity.vpnIps = entity.vpnIps || {};
       entity.vpns.push(vpn.id);
       self._touch(touchId, true);
     });

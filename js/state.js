@@ -118,6 +118,7 @@
         isp: '',
         ispImage: '',
         vpns: [],
+        vpnIps: {},
         x: Math.round(x), y: Math.round(y),
         configUrl: '',
         notes: '',
@@ -138,14 +139,15 @@
         name: meta.label,
         os: '', ip: '', role: '', configUrl: '', notes: '',
         vpns: [],
+        vpnIps: {},
         interfaces: [Factory.interface('eth0')]
       };
     },
     link(a, b) {
       return { id: uuid(), a, b, wireless: false, label: '' };
     },
-    vpn(name, color, ip) {
-      return { id: uuid(), name: name || 'VPN', color: color || '#2ad9b8', ip: ip || '' };
+    vpn(name, color) {
+      return { id: uuid(), name: name || 'VPN', color: color || '#2ad9b8' };
     }
   };
 

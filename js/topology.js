@@ -29,11 +29,11 @@
 
   function vpnIpLabelsHtml(state, device) {
     return (device.vpns || []).map((id) => (state.vpns || []).find((vpn) => vpn.id === id))
-      .filter((vpn) => vpn && vpn.ip)
+      .filter((vpn) => vpn && device.vpnIps && device.vpnIps[vpn.id])
       .map((vpn) => {
         const color = /^#[0-9a-f]{6}$/i.test(vpn.color) ? vpn.color : '#2ad9b8';
         return '<span class="vpn-ip" style="color:' + color + '" title="' + UI.escapeHtml(vpn.name) + '">' +
-          UI.escapeHtml(vpn.ip) + '</span>';
+          UI.escapeHtml(device.vpnIps[vpn.id]) + '</span>';
       }).join('');
   }
 
