@@ -137,6 +137,7 @@
         type: CHILD_TYPES[type] ? type : 'vm',
         name: meta.label,
         os: '', ip: '', role: '', configUrl: '', notes: '',
+        vpns: [],
         interfaces: [Factory.interface('eth0')]
       };
     },

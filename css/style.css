@@ -474,6 +474,13 @@ a { color: var(--accent); }
 }
 .node-child:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
 .node-child.connect-target { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.node-child.has-vpn,
+.node-child.has-vpn:hover,
+.node-child.has-vpn.connect-target {
+  border: 2px solid transparent;
+  border-color: transparent !important;
+  background: linear-gradient(180deg, var(--bg-elevated), var(--surface)) padding-box, var(--vpn-ring) border-box;
+}
 .node-child-head { display: flex; align-items: flex-start; gap: 7px; }
 .node-child-icon {
   width: 24px; height: 24px;

@@ -37,6 +37,7 @@
       normalizeIfaces(d.interfaces);
       d.children.forEach(c => {
         if (typeof c.role !== 'string') c.role = '';
+        if (!Array.isArray(c.vpns)) c.vpns = [];
         if (!Array.isArray(c.interfaces)) c.interfaces = [];
         normalizeIfaces(c.interfaces);
       });

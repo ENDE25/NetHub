@@ -259,8 +259,10 @@
       // connections (their own cable, not the host's).
       const childrenHtml = (d.children || []).map((c) => {
         const cm = CHILD_TYPES[c.type] || CHILD_TYPES.vm;
+        const childVpn = vpnRing(this.state(), c);
+        const childVpnClass = childVpn ? ' has-vpn' : '';
         const roleColor = c.role ? UI.colorForText(c.role) : null;
-        return '<div class="node-child type-' + cm.group + '" data-role="child-row" data-child-id="' + c.id + '">' +
+        return '<div class="node-child type-' + cm.group + childVpnClass + '" data-role="child-row" data-child-id="' + c.id + (childVpn ? '" style="--vpn-ring:' + childVpn : '') + '">' +
           '<div class="node-child-head">' +
             '<span class="node-child-icon">' + Icons.svg(cm.icon, 15) + '</span>' +
             '<div class="node-child-title">' +
