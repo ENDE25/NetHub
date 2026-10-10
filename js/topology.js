@@ -13,6 +13,20 @@
 
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
+  function vpnRing(state, device) {
+    const colors = (device.vpns || []).map((id) => (state.vpns || []).find((vpn) => vpn.id === id))
+      .filter(Boolean).map((vpn) => /^#[0-9a-f]{6}$/i.test(vpn.color) ? vpn.color : '#2ad9b8');
+    if (!colors.length) return null;
+    if (colors.length === 1) return colors[0];
+    const segment = 360 / colors.length;
+    const stops = colors.map((color, index) => {
+      const start = Math.round(index * segment * 100) / 100;
+      const end = Math.round((index + 1) * segment * 100) / 100;
+      return color + ' ' + start + 'deg ' + end + 'deg';
+    });
+    return 'conic-gradient(' + stops.join(',') + ')';
+  }
+
   // The four fixed anchor points on a node's own edge, shown on hover — drag
   // from one to start a connection, or drop an existing link's end onto one.
   function anchorDotsHtml() {
@@ -220,6 +234,8 @@
   };
 
   Topology.prototype._renderNode = function (d) {
+    const vpnGradient = vpnRing(this.state(), d);
+    const vpnClass = vpnGradient ? ' has-vpn' : '';
     const meta = DEVICE_TYPES[d.type] || DEVICE_TYPES.host;
     const el = document.createElement('div');
     el.dataset.id = d.id;
@@ -229,13 +245,13 @@
     if (d.type === 'isp') {
       // ISP nodes are deliberately not a card like other devices: just the
       // word "ISP", or a custom logo image the user uploads, with no background.
-      el.className = 'node node-isp' + (d.id === this.selectedDeviceId ? ' selected' : '');
+      el.className = 'node node-isp' + vpnClass + (d.id === this.selectedDeviceId ? ' selected' : '');
       const body = d.ispImage
         ? '<img class="node-isp-image" src="' + UI.escapeHtml(d.ispImage) + '" alt="' + UI.escapeHtml(d.name || 'ISP') + '"/>'
         : '<span class="node-isp-label">ISP</span>';
       el.innerHTML = body + anchorDotsHtml();
     } else {
-      el.className = 'node type-' + meta.group + ' device-' + d.type + (d.id === this.selectedDeviceId ? ' selected' : '');
+      el.className = 'node type-' + meta.group + ' device-' + d.type + vpnClass + (d.id === this.selectedDeviceId ? ' selected' : '');
 
       // VMs/containers render as full nodes nested inside this one — same card
       // look as a top-level device, colored icon and panel button included —
@@ -281,6 +297,8 @@
         '</div>' : '') +
         anchorDotsHtml();
     }
+
+    if (vpnGradient) el.style.setProperty('--vpn-ring', vpnGradient);
 
     this._bindNodeEvents(el, d);
     this.nodesLayer.appendChild(el);

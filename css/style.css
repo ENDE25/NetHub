@@ -327,6 +327,14 @@ a { color: var(--accent); }
   user-select: none;
   transition: box-shadow 0.15s, border-color 0.15s;
 }
+.node.has-vpn,
+.node.has-vpn:hover,
+.node.has-vpn.selected,
+.node.has-vpn.connect-target {
+  border: 2px solid transparent;
+  border-color: transparent !important;
+  background: linear-gradient(180deg, var(--bg-elevated), var(--surface)) padding-box, var(--vpn-ring) border-box;
+}
 .node:hover { border-color: #3a4759; box-shadow: var(--shadow-md); }
 .node.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-md); }
 .node.connect-target { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -436,6 +444,13 @@ a { color: var(--accent); }
 .node-isp:hover { border-color: transparent; box-shadow: none; }
 .node-isp.selected { box-shadow: 0 0 0 2px var(--accent-soft), 0 0 0 1px var(--accent); }
 .node-isp.connect-target { box-shadow: 0 0 0 2px var(--accent-soft), 0 0 0 1px var(--accent); }
+.node-isp.has-vpn,
+.node-isp.has-vpn:hover,
+.node-isp.has-vpn.selected,
+.node-isp.has-vpn.connect-target {
+  border: 2px solid transparent;
+  background: var(--vpn-ring) border-box;
+}
 .node-isp-label {
   font-size: 22px;
   font-weight: 800;
@@ -629,6 +644,27 @@ select { appearance: none; -webkit-appearance: none; background-image: none; cur
   padding-top: 14px;
 }
 .section-title .hint { font-size: 11px; font-weight: 400; color: var(--text-faint); margin-top: 2px; }
+
+.vpn-list { display: flex; flex-direction: column; gap: 5px; }
+.vpn-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 6px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.vpn-row input { width: 15px; height: 15px; accent-color: var(--vpn-color); }
+.vpn-swatch { width: 10px; height: 10px; border-radius: 50%; background: var(--vpn-color); flex-shrink: 0; }
+.vpn-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+.vpn-row .icon-btn { flex-shrink: 0; }
+.add-vpn-row { display: flex; align-items: center; gap: 7px; }
+.add-vpn-row input[type="text"] { min-width: 0; flex: 1; }
+.add-vpn-row input[type="color"] { width: 34px; height: 34px; padding: 3px; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; }
+.add-vpn-row .btn { flex-shrink: 0; }
 
 .iface-list, .child-list { display: flex; flex-direction: column; gap: 6px; }
 .iface-row {

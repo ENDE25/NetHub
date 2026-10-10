@@ -19,6 +19,7 @@
     server:   { label: 'Servidor',        icon: 'server',   group: 'compute' },
     nas:      { label: 'NAS',             icon: 'server',   group: 'compute' },
     host:     { label: 'Host',            icon: 'host',     group: 'compute' },
+    camera:   { label: 'Cámara',          icon: 'camera',   group: 'net' },
     isp:      { label: 'ISP / Operador',  icon: 'cloud',     group: 'wan' },
     cloud:    { label: 'Internet / WAN',  icon: 'cloud',     group: 'wan' }
   };
@@ -116,6 +117,7 @@
         role: '',
         isp: '',
         ispImage: '',
+        vpns: [],
         x: Math.round(x), y: Math.round(y),
         configUrl: '',
         notes: '',
@@ -140,6 +142,9 @@
     },
     link(a, b) {
       return { id: uuid(), a, b, wireless: false, label: '' };
+    },
+    vpn(name, color) {
+      return { id: uuid(), name: name || 'VPN', color: color || '#2ad9b8' };
     }
   };
 

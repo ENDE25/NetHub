@@ -148,6 +148,24 @@
         '</div>'
       : '';
 
+    const vpns = this.state().vpns || [];
+    const vpnField =
+      '<div class="section-title">VPNs<span class="hint">Los dispositivos de una VPN comparten el color del perímetro</span></div>' +
+      '<div class="vpn-list" data-role="vpn-list">' +
+        (vpns.length ? vpns.map((vpn) =>
+          '<label class="vpn-row" style="--vpn-color:' + vpn.color + '">' +
+            '<input type="checkbox" data-role="vpn-toggle" data-vpn-id="' + UI.escapeHtml(vpn.id) + '"' + (d.vpns.includes(vpn.id) ? ' checked' : '') + '/>' +
+            '<span class="vpn-swatch"></span><span class="vpn-name">' + UI.escapeHtml(vpn.name) + '</span>' +
+            '<button type="button" class="icon-btn danger" data-role="vpn-delete" data-vpn-id="' + UI.escapeHtml(vpn.id) + '" title="Eliminar VPN">' + Icons.svg('trash', 13) + '</button>' +
+          '</label>'
+        ).join('') : '<span class="field-note">Todavía no hay VPNs creadas.</span>') +
+      '</div>' +
+      '<div class="add-vpn-row">' +
+        '<input type="text" data-role="new-vpn-name" placeholder="Nombre de la nueva VPN"/>' +
+        '<input type="color" data-role="new-vpn-color" value="#2ad9b8" title="Color de la VPN"/>' +
+        '<button type="button" class="btn btn-ghost" data-role="add-vpn">' + Icons.svg('plus', 14) + '<span>Crear</span></button>' +
+      '</div>';
+
     wrap.innerHTML =
       '<div class="field"><span class="field-label">Nombre</span><input data-field="name" type="text" value="' + UI.escapeHtml(d.name) + '" placeholder="Nombre del dispositivo"/></div>' +
       '<div class="field-row">' +
@@ -157,6 +175,7 @@
       roleField +
       ispField +
       ispImageField +
+      vpnField +
       '<div class="field"><span class="field-label">URL del panel de configuración</span><input data-field="configUrl" type="text" value="' + UI.escapeHtml(d.configUrl) + '" placeholder="http://192.168.1.1"/></div>' +
       '<div class="field"><span class="field-label">Notas</span><textarea data-field="notes" rows="3" placeholder="Notas adicionales">' + UI.escapeHtml(d.notes) + '</textarea></div>' +
       '<div class="section-title">Interfaces / IPs<span class="hint">Cada línea de conexión usa una interfaz</span></div>' +
@@ -181,6 +200,45 @@
     configUrlInput.addEventListener('input', (e) => { d.configUrl = e.target.value.trim(); self._touch(d.id); });
     configUrlInput.addEventListener('blur', () => self._render());
     wrap.querySelector('[data-field="notes"]').addEventListener('input', (e) => { d.notes = e.target.value; self.persist(); });
+
+    wrap.querySelectorAll('[data-role="vpn-toggle"]').forEach((toggle) => {
+      toggle.addEventListener('change', () => {
+        d.vpns = d.vpns || [];
+        if (toggle.checked && !d.vpns.includes(toggle.dataset.vpnId)) d.vpns.push(toggle.dataset.vpnId);
+        if (!toggle.checked) d.vpns = d.vpns.filter((id) => id !== toggle.dataset.vpnId);
+        self._touch(d.id, true);
+      });
+    });
+    wrap.querySelectorAll('[data-role="vpn-delete"]').forEach((button) => {
+      button.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const vpn = vpns.find((item) => item.id === button.dataset.vpnId);
+        if (!vpn) return;
+        UI.confirm({
+          title: 'Eliminar VPN',
+          message: 'Se quitará "' + vpn.name + '" de todos los dispositivos.',
+          confirmLabel: 'Eliminar', danger: true,
+          onConfirm: () => {
+            const state = self.state();
+            state.vpns = state.vpns.filter((item) => item.id !== vpn.id);
+            state.devices.forEach((device) => { device.vpns = (device.vpns || []).filter((id) => id !== vpn.id); });
+            self._touch(d.id, true);
+          }
+        });
+      });
+    });
+    wrap.querySelector('[data-role="add-vpn"]').addEventListener('click', () => {
+      const nameInput = wrap.querySelector('[data-role="new-vpn-name"]');
+      const name = nameInput.value.trim();
+      if (!name) { nameInput.focus(); return; }
+      const vpn = global.NetHub.Factory.vpn(name, wrap.querySelector('[data-role="new-vpn-color"]').value);
+      const state = self.state();
+      state.vpns.push(vpn);
+      d.vpns = d.vpns || [];
+      d.vpns.push(vpn.id);
+      self._touch(d.id, true);
+    });
 
     const ispSelect = wrap.querySelector('[data-field="isp"]');
     if (ispSelect) {
