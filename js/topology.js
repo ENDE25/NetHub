@@ -27,6 +27,23 @@
     return 'conic-gradient(' + stops.join(',') + ')';
   }
 
+  function vpnIpLabelsHtml(state, device) {
+    const ips = [];
+    if (device.ip) ips.push(device.ip);
+    (device.interfaces || []).forEach((iface) => {
+      if (iface.ip && !ips.includes(iface.ip)) ips.push(iface.ip);
+    });
+    if (!ips.length) return '';
+
+    return (device.vpns || []).map((id) => (state.vpns || []).find((vpn) => vpn.id === id))
+      .filter(Boolean)
+      .map((vpn) => {
+        const color = /^#[0-9a-f]{6}$/i.test(vpn.color) ? vpn.color : '#2ad9b8';
+        return '<span class="vpn-ip" style="color:' + color + '" title="' + UI.escapeHtml(vpn.name) + '">' +
+          UI.escapeHtml(ips.join(' · ')) + '</span>';
+      }).join('');
+  }
+
   // The four fixed anchor points on a node's own edge, shown on hover — drag
   // from one to start a connection, or drop an existing link's end onto one.
   function anchorDotsHtml() {
@@ -236,6 +253,7 @@
   Topology.prototype._renderNode = function (d) {
     const vpnGradient = vpnRing(this.state(), d);
     const vpnClass = vpnGradient ? ' has-vpn' : '';
+    const vpnIps = vpnIpLabelsHtml(this.state(), d);
     const meta = DEVICE_TYPES[d.type] || DEVICE_TYPES.host;
     const el = document.createElement('div');
     el.dataset.id = d.id;
@@ -245,13 +263,13 @@
     if (d.type === 'isp') {
       // ISP nodes are deliberately not a card like other devices: just the
       // word "ISP", or a custom logo image the user uploads, with no background.
-      el.className = 'node node-isp' + vpnClass + (d.id === this.selectedDeviceId ? ' selected' : '');
+      el.className = 'node node-isp' + vpnClass + (vpnIps ? ' has-vpn-ips' : '') + (d.id === this.selectedDeviceId ? ' selected' : '');
       const body = d.ispImage
         ? '<img class="node-isp-image" src="' + UI.escapeHtml(d.ispImage) + '" alt="' + UI.escapeHtml(d.name || 'ISP') + '"/>'
         : '<span class="node-isp-label">ISP</span>';
-      el.innerHTML = body + anchorDotsHtml();
+      el.innerHTML = body + (vpnIps ? '<div class="vpn-ip-labels">' + vpnIps + '</div>' : '') + anchorDotsHtml();
     } else {
-      el.className = 'node type-' + meta.group + ' device-' + d.type + vpnClass + (d.id === this.selectedDeviceId ? ' selected' : '');
+      el.className = 'node type-' + meta.group + ' device-' + d.type + vpnClass + (vpnIps ? ' has-vpn-ips' : '') + (d.id === this.selectedDeviceId ? ' selected' : '');
 
       // VMs/containers render as full nodes nested inside this one — same card
       // look as a top-level device, colored icon and panel button included —
@@ -261,8 +279,9 @@
         const cm = CHILD_TYPES[c.type] || CHILD_TYPES.vm;
         const childVpn = vpnRing(this.state(), c);
         const childVpnClass = childVpn ? ' has-vpn' : '';
+        const childVpnIps = vpnIpLabelsHtml(this.state(), c);
         const roleColor = c.role ? UI.colorForText(c.role) : null;
-        return '<div class="node-child type-' + cm.group + childVpnClass + '" data-role="child-row" data-child-id="' + c.id + (childVpn ? '" style="--vpn-ring:' + childVpn : '') + '">' +
+        return '<div class="node-child type-' + cm.group + childVpnClass + (childVpnIps ? ' has-vpn-ips' : '') + '" data-role="child-row" data-child-id="' + c.id + (childVpn ? '" style="--vpn-ring:' + childVpn : '') + '">' +
           '<div class="node-child-head">' +
             '<span class="node-child-icon">' + Icons.svg(cm.icon, 15) + '</span>' +
             '<div class="node-child-title">' +
@@ -276,12 +295,12 @@
           (c.configUrl ? '<div class="node-foot">' +
             '<button type="button" class="panel-badge" data-role="open-panel" data-url="' + UI.escapeHtml(c.configUrl) + '" title="Abrir panel en una pestaña nueva">' + Icons.svg('externalLink', 11) + 'Panel</button>' +
           '</div>' : '') +
+          (childVpnIps ? '<div class="vpn-ip-labels">' + childVpnIps + '</div>' : '') +
           anchorDotsHtml() +
         '</div>';
       }).join('');
 
       const roleColor = d.role ? UI.colorForText(d.role) : null;
-
       el.innerHTML =
         '<div class="node-head">' +
           '<span class="node-icon">' + Icons.svg(meta.icon, 18) + '</span>' +
@@ -297,6 +316,7 @@
         (d.configUrl ? '<div class="node-foot">' +
           '<button type="button" class="panel-badge" data-role="open-panel" data-url="' + UI.escapeHtml(d.configUrl) + '" title="Abrir panel en una pestaña nueva">' + Icons.svg('externalLink', 11) + 'Panel</button>' +
         '</div>' : '') +
+        (vpnIps ? '<div class="vpn-ip-labels">' + vpnIps + '</div>' : '') +
         anchorDotsHtml();
     }
 

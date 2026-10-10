@@ -327,6 +327,7 @@ a { color: var(--accent); }
   user-select: none;
   transition: box-shadow 0.15s, border-color 0.15s;
 }
+.node.has-vpn-ips { padding-bottom: 30px; }
 .node.has-vpn,
 .node.has-vpn:hover,
 .node.has-vpn.selected,
@@ -472,6 +473,7 @@ a { color: var(--accent); }
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
+.node-child.has-vpn-ips { padding-bottom: 26px; }
 .node-child:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
 .node-child.connect-target { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .node-child.has-vpn,
@@ -510,6 +512,22 @@ a { color: var(--accent); }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.vpn-ip-labels {
+  position: absolute;
+  left: 9px;
+  bottom: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  max-width: calc(100% - 18px);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  pointer-events: none;
+}
+.node-child .vpn-ip-labels { left: 7px; bottom: 5px; max-width: calc(100% - 14px); }
+.vpn-ip { white-space: nowrap; text-shadow: 0 1px 2px var(--bg-elevated); }
 .node-child-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
 .role-chip { font-weight: 700; border-width: 1px; border-style: solid; }
 .panel-badge {
