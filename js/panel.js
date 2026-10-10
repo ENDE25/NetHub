@@ -162,7 +162,7 @@
       vpnField +
       '<div class="field"><span class="field-label">URL del panel de configuración</span><input data-field="configUrl" type="text" value="' + UI.escapeHtml(d.configUrl) + '" placeholder="http://192.168.1.1"/></div>' +
       '<div class="field"><span class="field-label">Notas</span><textarea data-field="notes" rows="3" placeholder="Notas adicionales">' + UI.escapeHtml(d.notes) + '</textarea></div>' +
-      '<div class="section-title">Interfaces / IPs<span class="hint">Cada línea de conexión usa una interfaz</span></div>' +
+      '<div class="section-title">Interfaces / IPs<span class="hint">Las IP asociadas a una VPN se mostrarán en el mapa</span></div>' +
       '<div class="iface-list" data-role="iface-list"></div>' +
       '<button class="btn btn-ghost btn-block" data-role="add-iface">' + Icons.svg('plus', 14) + '<span>Añadir interfaz</span></button>' +
       '<div class="section-title">Máquinas virtuales y contenedores<span class="hint">Alojados dentro de este dispositivo</span></div>' +
@@ -385,7 +385,7 @@
       this._renderVpnSection(child) +
       '<div class="field"><span class="field-label">URL del panel de configuración</span><input data-field="configUrl" type="text" value="' + UI.escapeHtml(child.configUrl) + '" placeholder="http://192.168.1.50:9000"/></div>' +
       '<div class="field"><span class="field-label">Notas</span><textarea data-field="notes" rows="3">' + UI.escapeHtml(child.notes) + '</textarea></div>' +
-      '<div class="section-title">Interfaces / IPs<span class="hint">Cada línea de conexión usa una interfaz</span></div>' +
+      '<div class="section-title">Interfaces / IPs<span class="hint">Las IP asociadas a una VPN se mostrarán en el mapa</span></div>' +
       '<div class="iface-list" data-role="iface-list"></div>' +
       '<button class="btn btn-ghost btn-block" data-role="add-iface">' + Icons.svg('plus', 14) + '<span>Añadir interfaz</span></button>' +
       '<button class="btn btn-danger btn-block danger-zone" data-role="delete-child">' + Icons.svg('trash', 14) + '<span>Eliminar</span></button>';

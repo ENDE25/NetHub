@@ -365,6 +365,12 @@ a { color: var(--accent); }
   border-color: transparent !important;
   background: linear-gradient(180deg, var(--bg-elevated), var(--surface)) padding-box, var(--vpn-ring) border-box;
 }
+.node.device-host.has-vpn,
+.node.device-host.has-vpn:hover,
+.node.device-host.has-vpn.selected,
+.node.device-host.has-vpn.connect-target {
+  background: linear-gradient(180deg, #76a1ff, #5b8cff) padding-box, var(--vpn-ring) border-box;
+}
 .node:hover { border-color: #3a4759; box-shadow: var(--shadow-md); }
 .node.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-md); }
 .node.connect-target { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -556,7 +562,13 @@ a { color: var(--accent); }
   pointer-events: none;
 }
 .node-child .vpn-ip-labels { left: 7px; bottom: 5px; max-width: calc(100% - 14px); }
-.vpn-ip { white-space: nowrap; text-shadow: 0 1px 2px var(--bg-elevated); }
+.vpn-ip {
+  white-space: nowrap;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.42);
+  text-shadow: none;
+}
 .node-child-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
 .role-chip { font-weight: 700; border-width: 1px; border-style: solid; }
 .panel-badge {
