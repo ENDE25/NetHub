@@ -28,19 +28,12 @@
   }
 
   function vpnIpLabelsHtml(state, device) {
-    const ips = [];
-    if (device.ip) ips.push(device.ip);
-    (device.interfaces || []).forEach((iface) => {
-      if (iface.ip && !ips.includes(iface.ip)) ips.push(iface.ip);
-    });
-    if (!ips.length) return '';
-
     return (device.vpns || []).map((id) => (state.vpns || []).find((vpn) => vpn.id === id))
-      .filter(Boolean)
+      .filter((vpn) => vpn && vpn.ip)
       .map((vpn) => {
         const color = /^#[0-9a-f]{6}$/i.test(vpn.color) ? vpn.color : '#2ad9b8';
         return '<span class="vpn-ip" style="color:' + color + '" title="' + UI.escapeHtml(vpn.name) + '">' +
-          UI.escapeHtml(ips.join(' · ')) + '</span>';
+          UI.escapeHtml(vpn.ip) + '</span>';
       }).join('');
   }
 

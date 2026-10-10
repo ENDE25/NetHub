@@ -45,7 +45,8 @@
     state.vpns = state.vpns.filter(v => v && typeof v.id === 'string').map(v => ({
       id: v.id,
       name: typeof v.name === 'string' && v.name.trim() ? v.name.trim() : 'VPN',
-      color: /^#[0-9a-f]{6}$/i.test(v.color || '') ? v.color : '#2ad9b8'
+      color: /^#[0-9a-f]{6}$/i.test(v.color || '') ? v.color : '#2ad9b8',
+      ip: typeof v.ip === 'string' ? v.ip.trim() : ''
     }));
     return state;
   }

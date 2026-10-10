@@ -144,8 +144,8 @@
     link(a, b) {
       return { id: uuid(), a, b, wireless: false, label: '' };
     },
-    vpn(name, color) {
-      return { id: uuid(), name: name || 'VPN', color: color || '#2ad9b8' };
+    vpn(name, color, ip) {
+      return { id: uuid(), name: name || 'VPN', color: color || '#2ad9b8', ip: ip || '' };
     }
   };
 
