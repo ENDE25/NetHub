@@ -282,7 +282,7 @@
     const hostOpts = [{ v: '', l: '(Nivel superior del mapa)' }].concat(state.nodes
       .filter((x) => !blocked.has(x.id) && Model.typeMeta(x.type).canHost)
       .map((x) => ({ v: x.id, l: (x.name || Model.typeMeta(x.type).label) + ' (' + Model.typeMeta(x.type).label + ')' })));
-    const groupOpts = [{ v: '', l: 'Sin grupo' }].concat(state.groups.map((g) => ({ v: g.id, l: g.name })), [{ v: '__new__', l: '+ Nuevo grupo...' }]);
+    const groupOpts = [{ v: '', l: 'Sin grupo' }].concat(state.groups.filter((g) => !g.frame).map((g) => ({ v: g.id, l: g.name })), [{ v: '__new__', l: '+ Nuevo grupo...' }]);
 
     const ispProvider = n.type === 'isp'
       ? field('Proveedor', selectHtml('isp', [{ v: '', l: 'Selecciona un proveedor...' }].concat(ISP_PROVIDERS.map((p) => ({ v: p.id, l: p.name }))), n.isp)) +
@@ -740,8 +740,31 @@
     const g = state.groups.find((x) => x.id === this.target.id);
     if (!g) return false;
     const members = state.nodes.filter((n) => n.groupId === g.id);
-    this._header({ html: Icons.svg('group', 18), color: g.color, bg: g.color + '26' }, g.name, 'Grupo · ' + members.length + (members.length === 1 ? ' nodo' : ' nodos'), {});
+    this._header({ html: Icons.svg('group', 18), color: g.color, bg: g.color + '26' }, g.name || 'Grupo', 'Grupo · ' + members.length + (members.length === 1 ? ' nodo' : ' nodos'), {});
     this._setTabs(null);
+    if (g.frame) {
+      // the "Grupo" figure only has an (optional) name
+      const fw = document.createElement('div');
+      fw.className = 'details-pane';
+      fw.innerHTML = field('Nombre', textInput('name', g.name, 'Opcional'), 'Los nodos que queden dentro del marco pertenecen al grupo') +
+        '<button class="btn btn-danger btn-block danger-zone" data-role="delete-frame">' + Icons.svg('trash', 14) + '<span>Eliminar grupo (los nodos se conservan)</span></button>';
+      bindFields(fw, g, () => {
+        self.commit('group:' + g.id + ':name');
+        self.root.querySelector('.sp-name').textContent = g.name || 'Grupo';
+        self.onChanged({ full: true });
+      });
+      fw.querySelector('[data-role="delete-frame"]').addEventListener('click', () => {
+        state.nodes.forEach((n) => { if (n.groupId === g.id) n.groupId = ''; });
+        state.groups = state.groups.filter((x) => x.id !== g.id);
+        self.commit('frame-delete');
+        self.onChanged({ full: true });
+        self.close();
+        self.onClose();
+      });
+      this.body.innerHTML = '';
+      this.body.appendChild(fw);
+      return true;
+    }
     const wrap = document.createElement('div');
     wrap.className = 'details-pane';
     wrap.innerHTML =

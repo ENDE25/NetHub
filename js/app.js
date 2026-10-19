@@ -14,6 +14,7 @@
     { id: 'networks', label: 'Redes', icon: 'subnet' },
     { id: 'panels', label: 'Paneles', icon: 'launch' }
   ];
+  const GROUP_ITEM = '__group__';   // library entry that adds a "Grupo" frame instead of a node
   const QUICK_TYPES = ['router', 'switch', 'firewall', 'ap', 'server', 'host', 'nas', 'camera'];
 
   let topology, panel;
@@ -262,9 +263,10 @@
       groupsLayer: $('groups-layer'), segmentsLayer: $('segments-layer'),
       linksBehind: $('links-behind'), nodesLayer: $('nodes-layer'), linksAbove: $('links-above'),
       marqueeEl: $('marquee'), emptyHint: $('empty-hint'),
-      getState, commit: (key) => Store.commit(key), touchView: () => Store.touchView(),
+      // every canvas action is its own undo step (only arrow-key nudging merges while the key repeats)
+      getState, commit: (key) => Store.commit(key === 'nudge' ? key : undefined), touchView: () => Store.touchView(),
       onSelect, onConnect: (c) => openConnectModal(c), onContext,
-      onDropNew: (type, pos, targetId) => { topology.addNode(type, pos, targetId); refreshChrome(); },
+      onDropNew: (type, pos, targetId) => { if (type === GROUP_ITEM) topology.addFrame(pos); else topology.addNode(type, pos, targetId); refreshChrome(); },
       getDragType: () => dragType
     });
     // A hidden map cannot be measured; guard every layout pass until it is visible again.
@@ -459,6 +461,20 @@
     UI.toast(names.length === 1 ? '"' + names[0] + '" eliminado' + (gone.size > 1 ? ' con su contenido' : '') + '.' : gone.size + ' nodos eliminados.', 'success', { action: { label: 'Deshacer', onClick: () => doUndo() } });
   }
 
+  // Deleting a group (or frame) only releases its nodes.
+  function removeGroup(id) {
+    const s = getState();
+    const g = s.groups.find((x) => x.id === id);
+    if (!g) return;
+    s.nodes.forEach((n) => { if (n.groupId === id) n.groupId = ''; });
+    s.groups = s.groups.filter((x) => x.id !== id);
+    Store.commit('group-delete');
+    panel.close();
+    topology.setSelection([], true);
+    afterChange({ full: true });
+    UI.toast('Grupo eliminado (los nodos se conservan).', 'success', { action: { label: 'Deshacer', onClick: () => doUndo() } });
+  }
+
   function removeLink(id) {
     const s = getState();
     s.links = s.links.filter((l) => l.id !== id);
@@ -486,6 +502,7 @@
 
   function addFromLibrary(type) {
     if (currentView !== 'map') setView('map');
+    if (type === GROUP_ITEM) { topology.addFrame(topology.viewCenter()); refreshChrome(); return; }
     const s = getState();
     const meta = NODE_TYPES[type];
     const sel = topology.getSelection();
@@ -509,7 +526,7 @@
       '<div class="lib-head"><span>Añadir al mapa</span></div>' +
       '<div class="lib-search">' + Icons.svg('search', 13) + '<input type="text" placeholder="Filtrar tipos..." autocomplete="off"/></div>' +
       '<div class="lib-scroll"></div>' +
-      '<div class="lib-foot">Arrastra al mapa o haz clic. Los tipos <b>Virtual</b> se pueden soltar sobre un nodo para meterlos dentro.</div>';
+      '<div class="lib-foot">Arrastra al mapa o haz clic. Los tipos <b>Virtual</b> se pueden soltar sobre un nodo para meterlos dentro, y los nodos que queden dentro de un <b>Grupo</b> pertenecen a él.</div>';
     const scroll = lib.querySelector('.lib-scroll');
     const input = lib.querySelector('input');
 
@@ -518,6 +535,7 @@
       scroll.innerHTML = '';
       CATEGORIES.forEach((cat) => {
         const types = Object.keys(NODE_TYPES).filter((k) => NODE_TYPES[k].cat === cat.id && (!q || NODE_TYPES[k].label.toLowerCase().includes(q) || k.includes(q)));
+        if (cat.id === 'other' && (!q || 'grupo'.includes(q))) types.push(GROUP_ITEM);
         if (!types.length) return;
         const collapsed = !q && prefs.cats[cat.id];
         const sec = document.createElement('div');
@@ -527,10 +545,12 @@
         types.forEach((t) => {
           const b = document.createElement('button');
           b.type = 'button';
-          b.className = 'lib-item type-' + NODE_TYPES[t].group;
+          const meta = t === GROUP_ITEM ? { icon: 'group', label: 'Grupo', group: 'other' } : NODE_TYPES[t];
+          b.className = 'lib-item type-' + meta.group;
           b.draggable = true;
           b.dataset.type = t;
-          b.innerHTML = '<span class="lib-icon">' + Icons.svg(NODE_TYPES[t].icon, 17) + '</span><span class="lib-label">' + esc(NODE_TYPES[t].label) + '</span>';
+          b.title = t === GROUP_ITEM ? 'Marco para agrupar nodos: los que queden dentro pertenecen al grupo' : '';
+          b.innerHTML = '<span class="lib-icon">' + Icons.svg(meta.icon, 17) + '</span><span class="lib-label">' + esc(meta.label) + '</span>';
           b.addEventListener('click', () => addFromLibrary(t));
           b.addEventListener('dragstart', (e) => { dragType = t; e.dataTransfer.setData('application/x-nethub-type', t); e.dataTransfer.effectAllowed = 'copy'; });
           b.addEventListener('dragend', () => { dragType = null; });
@@ -584,8 +604,9 @@
     } else if (info.groupId) {
       const g = s.groups.find((x) => x.id === info.groupId);
       if (!g) return;
-      items.push({ label: 'Editar grupo', icon: 'edit', onClick: () => topology.selectGroup(g.id) },
-        { label: g.collapsed ? 'Expandir grupo' : 'Colapsar grupo', icon: 'group', onClick: () => topology.setGroupCollapsed(g.id, !g.collapsed) });
+      items.push({ label: 'Editar grupo', icon: 'edit', onClick: () => topology.selectGroup(g.id) });
+      if (!g.frame) items.push({ label: g.collapsed ? 'Expandir grupo' : 'Colapsar grupo', icon: 'group', onClick: () => topology.setGroupCollapsed(g.id, !g.collapsed) });
+      items.push({ separator: true }, { label: 'Eliminar grupo', icon: 'trash', danger: true, hint: 'Supr', onClick: () => removeGroup(g.id) });
     } else {
       items.push({ header: 'Añadir aquí' });
       QUICK_TYPES.forEach((t) => items.push({ label: NODE_TYPES[t].label, icon: NODE_TYPES[t].icon, onClick: () => { topology.addNode(t, info.world); refreshChrome(); } }));
@@ -970,6 +991,7 @@
       { label: 'Exportar JSON', icon: 'download', run: () => exportAs('json') }, { label: 'Versiones y copias', icon: 'history', run: openVersions },
       { label: 'Atajos de teclado', icon: 'keyboard', run: openShortcuts }
     ];
+    cmds.push({ label: 'Añadir Grupo', icon: 'group', run: () => addFromLibrary(GROUP_ITEM), keywords: 'marco agrupar' });
     Object.keys(NODE_TYPES).forEach((t) => cmds.push({ label: 'Añadir ' + NODE_TYPES[t].label, icon: NODE_TYPES[t].icon, run: () => addFromLibrary(t), keywords: 'crear nuevo ' + t }));
     Search.open({
       getState, commands: cmds,
@@ -1003,6 +1025,7 @@
       if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();
         if (topology.selLink) removeLink(topology.selLink);
+        else if (topology.selGroup) removeGroup(topology.selGroup);
         else if (sel.length) removeNodes(sel);
         return;
       }

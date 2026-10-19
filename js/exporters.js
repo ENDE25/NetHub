@@ -135,7 +135,8 @@
     };
     const tops = state.nodes.filter((n) => ix.isTop(n.id));
     state.groups.forEach((g, gi) => {
-      lines.push('  subgraph g' + gi + '["' + q(g.name) + '"]');
+      if (!tops.some((n) => n.groupId === g.id)) return;
+      lines.push('  subgraph g' + gi + '["' + q(g.name || 'Grupo') + '"]');
       tops.filter((n) => n.groupId === g.id).forEach((n) => draw(n, '    '));
       lines.push('  end');
     });
@@ -209,7 +210,7 @@
       const b = (topology.groupBounds || {})[g.id];
       if (!b) return;
       out.push('<rect x="' + b.x + '" y="' + b.y + '" width="' + b.w + '" height="' + b.h + '" rx="16" fill="' + g.color + '" fill-opacity="0.07" stroke="' + g.color + '" stroke-opacity="0.5" stroke-dasharray="6 5"/>');
-      out.push('<text x="' + (b.x + 14) + '" y="' + (b.y + 20) + '" fill="' + g.color + '" font-size="12" font-weight="700" ' + FONT + '>' + xml(g.name) + '</text>');
+      if (g.name) out.push('<text x="' + (b.x + 14) + '" y="' + (b.y + 20) + '" fill="' + g.color + '" font-size="12" font-weight="700" ' + FONT + '>' + xml(g.name) + '</text>');
     });
     topology.segmentsLayer.querySelectorAll('polygon').forEach((p) => {
       const m = /--c:\s*(#[0-9a-f]{6})/i.exec(p.getAttribute('style') || '');

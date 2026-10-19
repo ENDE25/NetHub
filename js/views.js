@@ -133,7 +133,7 @@
         { key: 'svc', label: 'Servicios', value: (r) => r.n.services.map((s) => s.name || s.port).join(', ') },
         { key: 'os', label: 'SO', value: (r) => r.n.os, edit: (r, v) => { r.n.os = v; touch(r.id, 'inv:os:' + r.id); } },
         { key: 'model', label: 'Modelo', value: (r) => r.n.model, edit: (r, v) => { r.n.model = v; touch(r.id, 'inv:model:' + r.id); } },
-        { key: 'group', label: 'Grupo', value: (r) => (r.group ? r.group.name : '') },
+        { key: 'group', label: 'Grupo', value: (r) => (r.group ? r.group.name || 'Grupo' : '') },
         { key: 'tags', label: 'Etiquetas', value: (r) => r.n.tags.join(', ') }
       ];
     }
@@ -359,7 +359,7 @@
     const needle = ui.panelsFilter.trim().toLowerCase();
     const filtered = items.filter((it) => !needle || (it.u.name + ' ' + it.n.name + ' ' + it.u.url + ' ' + it.n.role).toLowerCase().includes(needle));
     const groupKey = (it) => {
-      if (ui.panelsGroup === 'group') { const g = state.groups.find((x) => x.id === (ix.top(it.n.id) || {}).groupId); return g ? g.name : 'Sin grupo'; }
+      if (ui.panelsGroup === 'group') { const g = state.groups.find((x) => x.id === (ix.top(it.n.id) || {}).groupId); return g ? g.name || 'Grupo' : 'Sin grupo'; }
       if (ui.panelsGroup === 'type') return Model.typeMeta(it.n.type).label;
       if (ui.panelsGroup === 'network') { const nets = Model.networksOfNode(state, it.n); return nets.length ? nets[0].name : 'Sin red'; }
       return 'Todos';

@@ -56,7 +56,7 @@
       run: () => api.onSelectTarget('overlay', ov.id), rank: 2
     }));
     state.groups.forEach((g) => items.push({
-      kind: 'Grupos', icon: 'group', title: g.name, sub: 'Grupo', hay: g.name.toLowerCase(), titleLc: g.name.toLowerCase(),
+      kind: 'Grupos', icon: 'group', title: g.name || 'Grupo sin nombre', sub: 'Grupo', hay: (g.name || 'grupo').toLowerCase(), titleLc: (g.name || 'grupo').toLowerCase(),
       run: () => api.onSelectTarget('group', g.id), rank: 3
     }));
     commands.forEach((c) => items.push({ kind: 'Comandos', icon: c.icon || 'wand', title: c.label, sub: c.hint || '', hay: (c.label + ' ' + (c.keywords || '')).toLowerCase(), titleLc: c.label.toLowerCase(), run: () => c.run(), rank: 4 }));

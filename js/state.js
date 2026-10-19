@@ -171,7 +171,11 @@
       return { id: uuid(), name: name || 'VPN', color: color || '#2ad9b8', cidr: '', notes: '' };
     },
     group(name, color) {
-      return { id: uuid(), name: name || 'Grupo', color: color || '#5b8cff', collapsed: false, x: 0, y: 0 };
+      return { id: uuid(), name: name || 'Grupo', color: color || '#5b8cff', collapsed: false, x: 0, y: 0, frame: null };
+    },
+    // A "Grupo" figure: a free rectangle placed on the map. Nodes whose centre lies inside it belong to it. Name is optional.
+    frame(x, y, w, h) {
+      return { id: uuid(), name: '', color: '#8795a8', collapsed: false, x: 0, y: 0, frame: { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) } };
     }
   };
 
@@ -237,7 +241,7 @@
 
   function pruneEmptyGroups(state) {
     const used = new Set(state.nodes.map((n) => n.groupId).filter(Boolean));
-    state.groups = state.groups.filter((g) => used.has(g.id));
+    state.groups = state.groups.filter((g) => used.has(g.id) || g.frame);
   }
 
   // Moves a node under a new parent (null = top level). Returns false if that would create a cycle

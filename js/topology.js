@@ -256,6 +256,13 @@
       minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
       maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
     });
+    if (!ids || !ids.length) {
+      Object.keys(this.groupBounds || {}).forEach((k) => {
+        const b = this.groupBounds[k];
+        minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
+        maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
+      });
+    }
     const pad = 80;
     const rect = this.viewport.getBoundingClientRect();
     v.zoom = clamp(Math.min(rect.width / (maxX - minX + pad * 2), rect.height / (maxY - minY + pad * 2)), 0.2, 1.4);
@@ -751,7 +758,17 @@
       } else if (c.kind === 'group') {
         this._beginMove(this.state().nodes.filter((n) => n.groupId === c.group.id).map((n) => n.id));
         if (c.collapsed) c.groupStart = { x: c.group.x, y: c.group.y };
+        if (c.group.frame) c.frameStart = { x: c.group.frame.x, y: c.group.frame.y };
       }
+    }
+    if (c.kind === 'frame-resize') {
+      const zz = this.state().view.zoom;
+      const f = c.group.frame;
+      f.w = Math.max(120, Math.round(c.w0 + (e.clientX - c.startX) / zz));
+      f.h = Math.max(80, Math.round(c.h0 + (e.clientY - c.startY) / zz));
+      if (this.state().view.snap && !e.altKey) { f.w = Math.max(120, snap(f.x + f.w) - f.x); f.h = Math.max(80, snap(f.y + f.h) - f.y); }
+      this.updateGroups();
+      return;
     }
     if (c.kind === 'nested') {
       c.ghost.style.left = (e.clientX + 12) + 'px';
@@ -765,7 +782,8 @@
       // Snap the grabbed node (or the group's first member) and keep everyone else at the same offset.
       const refId = c.kind === 'nodes' ? c.id : Array.from(c.moving)[0];
       const s = c.starts[refId];
-      if (s) { dx = snap(s.x + dx) - s.x; dy = snap(s.y + dy) - s.y; }
+      if (c.frameStart) { dx = snap(c.frameStart.x + dx) - c.frameStart.x; dy = snap(c.frameStart.y + dy) - c.frameStart.y; }
+      else if (s) { dx = snap(s.x + dx) - s.x; dy = snap(s.y + dy) - s.y; }
       else if (c.groupStart) { dx = snap(c.groupStart.x + dx) - c.groupStart.x; dy = snap(c.groupStart.y + dy) - c.groupStart.y; }
     }
     c.dx = dx; c.dy = dy;
@@ -777,6 +795,7 @@
       const el = this.nodeEls[n.id];
       if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; }
     });
+    if (c.frameStart) { c.group.frame.x = c.frameStart.x + dx; c.group.frame.y = c.frameStart.y + dy; }
     if (c.groupStart) {
       c.group.x = c.groupStart.x + dx; c.group.y = c.groupStart.y + dy;
       const el = this.groupEls['card:' + c.group.id];
@@ -867,6 +886,7 @@
       const w = this.screenToWorld(e.clientX, e.clientY);
       const fit = state.view.snap ? snap : Math.round;
       Model.setParent(state, n.id, null, { x: fit(w.x - 95), y: fit(w.y - 30) });
+      this.assignFrames([n.id]);
       this.commit('unnest');
       this.render();
       this.setSelection([n.id]);
@@ -878,6 +898,16 @@
     this.dragCtx = null;
     if (c.kind === 'nested') {
       if (c.moved) this._finishNestedDrag(c, e);
+      return;
+    }
+    if (c.kind === 'frame-resize') {
+      if (c.moved) {
+        this._justDragged = true;
+        setTimeout(() => { this._justDragged = false; }, 0);
+        this.assignFrames();
+        this.commit('frame-resize');
+        this.render();
+      }
       return;
     }
     if (c.moved && c.kind === 'nodes') {
@@ -898,7 +928,10 @@
       // the click that follows a drag must not also select the group header that was dragged
       this._justDragged = true;
       setTimeout(() => { this._justDragged = false; }, 0);
+      // a dragged node may have entered or left a frame, and a moved frame may have reached other nodes
+      this.assignFrames(c.kind === 'nodes' ? Array.from(c.moving) : null);
       this.commit('move');
+      if (c.kind === 'group' && c.group.frame) this.render();
       return;
     }
     if (c.kind === 'group') {
@@ -948,6 +981,13 @@
 
   Topology.prototype._onGroupMouseDown = function (e) {
     if (e.button !== 0) return;
+    const grip = e.target.closest('.group-resize');
+    if (grip) {
+      e.stopPropagation();
+      const fg = this.state().groups.find((x) => x.id === grip.dataset.groupId);
+      if (fg && fg.frame) this.dragCtx = { kind: 'frame-resize', group: fg, startX: e.clientX, startY: e.clientY, moved: false, w0: fg.frame.w, h0: fg.frame.h };
+      return;
+    }
     const head = e.target.closest('.group-head');
     if (!head) return;
     e.stopPropagation();
@@ -969,7 +1009,7 @@
 
   Topology.prototype.setGroupCollapsed = function (gid, collapsed) {
     const g = this.state().groups.find((x) => x.id === gid);
-    if (!g) return;
+    if (!g || g.frame) return;
     if (collapsed) {
       const members = this.state().nodes.filter((n) => n.groupId === gid && this.boxes[n.id]);
       if (members.length) {
@@ -992,6 +1032,7 @@
     this.groupBounds = {};
     const state = this.state();
     state.groups.forEach((g) => {
+      if (g.frame) { this._drawFrame(g); return; }
       if (g.collapsed) return;
       const members = state.nodes.filter((n) => n.groupId === g.id && this.boxes[n.id]);
       if (!members.length) return;
@@ -1013,6 +1054,59 @@
         '<button type="button" class="group-btn" data-act="group-collapse" title="Colapsar grupo">' + Icons.svg('chevronUp', 12) + '</button></div>';
       this.groupsLayer.appendChild(box);
     });
+  };
+
+  // A "Grupo" figure: free rectangle with an optional name, a grip to move it and a corner to resize it.
+  Topology.prototype._drawFrame = function (g) {
+    const f = g.frame;
+    this.groupBounds[g.id] = { x: f.x, y: f.y, w: f.w, h: f.h };
+    const box = document.createElement('div');
+    box.className = 'group-box frame' + (this.selGroup === g.id ? ' selected' : '');
+    box.dataset.groupId = g.id;
+    box.style.cssText = 'left:' + f.x + 'px;top:' + f.y + 'px;width:' + f.w + 'px;height:' + f.h + 'px;--gc:' + g.color;
+    box.innerHTML = '<div class="group-head" data-group-id="' + esc(g.id) + '">' + Icons.svg('group', 12) +
+      (g.name ? '<span class="group-name">' + esc(g.name) + '</span>' : '') + '</div>' +
+      '<div class="group-resize" data-group-id="' + esc(g.id) + '" title="Cambiar tamaño"></div>';
+    this.groupsLayer.appendChild(box);
+  };
+
+  // Centre of a top-level node (from its measured box, or its position if it is not drawn yet).
+  Topology.prototype._centerOf = function (n) {
+    const b = this.boxes[n.id];
+    return b ? { x: b.x + b.w / 2, y: b.y + b.h / 2 } : { x: n.x + 95, y: n.y + 34 };
+  };
+
+  // Frames own the top-level nodes whose centre is inside them (the smallest frame wins); a node that leaves
+  // every frame is released. Groups made from a selection are left alone unless a frame takes the node.
+  Topology.prototype.assignFrames = function (ids) {
+    const state = this.state();
+    const frames = state.groups.filter((g) => g.frame);
+    if (!frames.length && !state.nodes.some((n) => n.groupId && !this.ix.isTop(n.id))) return;
+    const list = ids ? state.nodes.filter((n) => ids.includes(n.id)) : state.nodes;
+    list.forEach((n) => {
+      if (n.parentId) return;
+      const c = this._centerOf(n);
+      let best = null;
+      frames.forEach((g) => {
+        const f = g.frame;
+        if (c.x >= f.x && c.x <= f.x + f.w && c.y >= f.y && c.y <= f.y + f.h && (!best || f.w * f.h < best.frame.w * best.frame.h)) best = g;
+      });
+      if (best) n.groupId = best.id;
+      else if (n.groupId && frames.some((g) => g.id === n.groupId)) n.groupId = '';
+    });
+  };
+
+  Topology.prototype.addFrame = function (pos, w, h) {
+    const state = this.state();
+    const W = w || 360, H = h || 220;
+    const fit = state.view.snap ? snap : Math.round;
+    const g = Factory.frame(fit(pos.x - W / 2), fit(pos.y - H / 2), W, H);
+    state.groups.push(g);
+    this.assignFrames();
+    this.commit('frame-add');
+    this.render();
+    this.selectGroup(g.id);
+    return g;
   };
 
   // ---------- Logical / overlay layers: convex hulls around members ----------
@@ -1393,6 +1487,7 @@
       n.y = (this.state().view.snap ? snap : Math.round)(pos.y - (meta.virtual ? 30 : 34));
     }
     state.nodes.push(n);
+    if (!parentId) this.assignFrames([n.id]);
     this.commit('add');
     if (parentId) {
       const p = this.ix.get(parentId);
