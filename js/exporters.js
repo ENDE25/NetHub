@@ -222,7 +222,7 @@
       out.push('<text x="' + t.getAttribute('x') + '" y="' + t.getAttribute('y') + '" fill="' + (m ? m[1] : '#94a3b8') + '" font-size="13" font-weight="700" ' + FONT + '>' + xml(t.textContent) + '</text>');
     });
 
-    const drawLinks = (nested) => topology.geoms.filter((g) => !!g.nested === nested).forEach((g) => {
+    const drawLinks = (nested) => topology.geoms.filter((g) => !!g.above === nested).forEach((g) => {
       if (g.nested) {
         out.push('<path d="' + g.d + '" fill="none" stroke="#6f7b8d" stroke-width="2" stroke-dasharray="6 5"/>');
       }
@@ -257,6 +257,12 @@
       const meta = Model.typeMeta(n.type);
       if (n.type === 'isp' && depth === 0) {
         out.push('<text x="' + (b.x + b.w / 2) + '" y="' + (b.y + b.h / 2 + 8) + '" text-anchor="middle" fill="#96a2b3" font-size="22" font-weight="800" ' + FONT + '>ISP</text>');
+        return;
+      }
+      if (n.type === 'group') {
+        out.push('<rect x="' + b.x + '" y="' + b.y + '" width="' + b.w + '" height="' + b.h + '" rx="16" fill="#8a9bb4" fill-opacity="0.05" stroke="#3b4a60" stroke-width="1.5" stroke-dasharray="6 5"/>');
+        if (n.name) out.push('<text x="' + (b.x + 40) + '" y="' + (b.y + 29) + '" fill="#e9edf3" font-size="13" font-weight="600" ' + FONT + '>' + xml(n.name) + '</text>');
+        ix.children(n.id).forEach((c) => { if (topology.boxes[c.id]) drawNode(c, depth + 1); });
         return;
       }
       const color = GROUP_COLORS[meta.group] || '#94a3b8';

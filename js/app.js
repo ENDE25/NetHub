@@ -14,7 +14,6 @@
     { id: 'networks', label: 'Redes', icon: 'subnet' },
     { id: 'panels', label: 'Paneles', icon: 'launch' }
   ];
-  const GROUP_ITEM = '__group__';   // library entry that adds a "Grupo" frame instead of a node
   const QUICK_TYPES = ['router', 'switch', 'firewall', 'ap', 'server', 'host', 'nas', 'camera'];
 
   let topology, panel;
@@ -266,7 +265,7 @@
       // every canvas action is its own undo step (only arrow-key nudging merges while the key repeats)
       getState, commit: (key) => Store.commit(key === 'nudge' ? key : undefined), touchView: () => Store.touchView(),
       onSelect, onConnect: (c) => openConnectModal(c), onContext,
-      onDropNew: (type, pos, targetId) => { if (type === GROUP_ITEM) topology.addFrame(pos); else topology.addNode(type, pos, targetId); refreshChrome(); },
+      onDropNew: (type, pos, targetId) => { topology.addNode(type, pos, targetId); refreshChrome(); },
       getDragType: () => dragType
     });
     // A hidden map cannot be measured; guard every layout pass until it is visible again.
@@ -380,7 +379,9 @@
   }
 
   function groupSelection() {
-    UI.prompt({ title: 'Agrupar nodos', label: 'Nombre del grupo', placeholder: 'Planta 1, Rack, Oficina...', confirmLabel: 'Agrupar', onConfirm: (name) => { topology.groupSelection(name); refreshChrome(); } });
+    // the Grupo's name is optional: it is created right away and can be named from its panel
+    topology.groupSelection();
+    refreshChrome();
   }
 
   // ---------- Legend ----------
@@ -452,16 +453,27 @@
     const ix = Model.index(s);
     const names = ids.map((id) => ix.get(id)).filter(Boolean).map((n) => n.name || Model.typeMeta(n.type).label);
     if (!names.length) return;
+    // deleting a Grupo keeps what is inside it: those nodes go back to the map where they were drawn
+    let released = 0;
+    ids.forEach((id) => {
+      const g = ix.get(id);
+      if (!g || g.type !== 'group') return;
+      ix.children(id).forEach((c) => {
+        if (ids.includes(c.id)) return;
+        const b = topology.boxes[c.id];
+        if (Model.setParent(s, c.id, null, { x: b ? b.x : g.x + 20, y: b ? b.y : g.y + 40 })) released++;
+      });
+    });
     const gone = Model.removeNodes(s, ids);
     Store.commit('delete');
     panel.close();
     topology.setSelection([], true);
     renderSelectionBar(0);
     afterChange({ full: true });
-    UI.toast(names.length === 1 ? '"' + names[0] + '" eliminado' + (gone.size > 1 ? ' con su contenido' : '') + '.' : gone.size + ' nodos eliminados.', 'success', { action: { label: 'Deshacer', onClick: () => doUndo() } });
+    UI.toast(names.length === 1 ? '"' + names[0] + '" eliminado' + (released ? ' (los ' + released + ' nodos de dentro se conservan)' : gone.size > 1 ? ' con su contenido' : '') + '.' : gone.size + ' nodos eliminados.', 'success', { action: { label: 'Deshacer', onClick: () => doUndo() } });
   }
 
-  // Deleting a group (or frame) only releases its nodes.
+  // Deleting an (old-style) group only releases its nodes.
   function removeGroup(id) {
     const s = getState();
     const g = s.groups.find((x) => x.id === id);
@@ -502,7 +514,6 @@
 
   function addFromLibrary(type) {
     if (currentView !== 'map') setView('map');
-    if (type === GROUP_ITEM) { topology.addFrame(topology.viewCenter()); refreshChrome(); return; }
     const s = getState();
     const meta = NODE_TYPES[type];
     const sel = topology.getSelection();
@@ -535,7 +546,6 @@
       scroll.innerHTML = '';
       CATEGORIES.forEach((cat) => {
         const types = Object.keys(NODE_TYPES).filter((k) => NODE_TYPES[k].cat === cat.id && (!q || NODE_TYPES[k].label.toLowerCase().includes(q) || k.includes(q)));
-        if (cat.id === 'other' && (!q || 'grupo'.includes(q))) types.push(GROUP_ITEM);
         if (!types.length) return;
         const collapsed = !q && prefs.cats[cat.id];
         const sec = document.createElement('div');
@@ -545,11 +555,10 @@
         types.forEach((t) => {
           const b = document.createElement('button');
           b.type = 'button';
-          const meta = t === GROUP_ITEM ? { icon: 'group', label: 'Grupo', group: 'other' } : NODE_TYPES[t];
+          const meta = NODE_TYPES[t];
           b.className = 'lib-item type-' + meta.group;
           b.draggable = true;
           b.dataset.type = t;
-          b.title = t === GROUP_ITEM ? 'Marco para agrupar nodos: los que queden dentro pertenecen al grupo' : '';
           b.innerHTML = '<span class="lib-icon">' + Icons.svg(meta.icon, 17) + '</span><span class="lib-label">' + esc(meta.label) + '</span>';
           b.addEventListener('click', () => addFromLibrary(t));
           b.addEventListener('dragstart', (e) => { dragType = t; e.dataTransfer.setData('application/x-nethub-type', t); e.dataTransfer.effectAllowed = 'copy'; });
@@ -584,7 +593,8 @@
         urls.forEach((u) => items.push({ label: 'Abrir ' + u.name, icon: 'externalLink', onClick: () => window.open(u.url, '_blank', 'noopener') }));
         if (urls.length) items.push({ separator: true });
         if (ip) items.push({ label: 'Copiar IP (' + ip + ')', icon: 'copy', onClick: () => UI.copyText(Net.ipText(ip)) });
-        items.push({ label: 'Interfaces y servicios...', icon: 'edit', onClick: () => panel.open({ kind: 'node', id: n.id }, 'interfaces') });
+        if (!Model.typeMeta(n.type).noIface) items.push({ label: 'Interfaces y servicios...', icon: 'edit', onClick: () => panel.open({ kind: 'node', id: n.id }, 'interfaces') });
+        else items.push({ label: 'Editar...', icon: 'edit', onClick: () => panel.open({ kind: 'node', id: n.id }) });
         if (Model.typeMeta(n.type).canHost) {
           items.push({ separator: true }, { header: 'Añadir dentro' });
           CHILD_TYPE_IDS.forEach((t) => items.push({ label: NODE_TYPES[t].label, icon: NODE_TYPES[t].icon, onClick: () => { topology.addNode(t, null, n.id); refreshChrome(); } }));
@@ -593,7 +603,7 @@
         items.push({ separator: true });
       }
       items.push({ label: multi ? 'Duplicar selección' : 'Duplicar', icon: 'copy', hint: 'Ctrl+D', onClick: () => duplicateNodes(sel) });
-      if (ix.isTop(n.id)) items.push({ label: multi ? 'Agrupar selección...' : 'Agrupar...', icon: 'group', hint: 'Ctrl+G', onClick: groupSelection });
+      if (ix.isTop(n.id)) items.push({ label: multi ? 'Agrupar selección' : 'Agrupar', icon: 'group', hint: 'Ctrl+G', onClick: groupSelection });
       if (!multi && n.groupId) items.push({ label: 'Quitar del grupo', icon: 'group', onClick: () => { n.groupId = ''; Model.pruneEmptyGroups(s); Store.commit('ungroup'); topology.render(); refreshChrome(); } });
       if (!multi && n.parentId) items.push({ label: 'Sacar al nivel superior', icon: 'chevronUp', onClick: () => { const top = ix.top(n.id); Model.setParent(s, n.id, null, { x: top.x + 60, y: top.y + 60 }); Store.commit('unnest'); topology.render(); refreshChrome(); } });
       items.push({ separator: true }, { label: multi ? 'Eliminar selección' : 'Eliminar', icon: 'trash', danger: true, hint: 'Supr', onClick: () => removeNodes(sel) });
@@ -605,7 +615,7 @@
       const g = s.groups.find((x) => x.id === info.groupId);
       if (!g) return;
       items.push({ label: 'Editar grupo', icon: 'edit', onClick: () => topology.selectGroup(g.id) });
-      if (!g.frame) items.push({ label: g.collapsed ? 'Expandir grupo' : 'Colapsar grupo', icon: 'group', onClick: () => topology.setGroupCollapsed(g.id, !g.collapsed) });
+      items.push({ label: g.collapsed ? 'Expandir grupo' : 'Colapsar grupo', icon: 'group', onClick: () => topology.setGroupCollapsed(g.id, !g.collapsed) });
       items.push({ separator: true }, { label: 'Eliminar grupo', icon: 'trash', danger: true, hint: 'Supr', onClick: () => removeGroup(g.id) });
     } else {
       items.push({ header: 'Añadir aquí' });
@@ -991,7 +1001,6 @@
       { label: 'Exportar JSON', icon: 'download', run: () => exportAs('json') }, { label: 'Versiones y copias', icon: 'history', run: openVersions },
       { label: 'Atajos de teclado', icon: 'keyboard', run: openShortcuts }
     ];
-    cmds.push({ label: 'Añadir Grupo', icon: 'group', run: () => addFromLibrary(GROUP_ITEM), keywords: 'marco agrupar' });
     Object.keys(NODE_TYPES).forEach((t) => cmds.push({ label: 'Añadir ' + NODE_TYPES[t].label, icon: NODE_TYPES[t].icon, run: () => addFromLibrary(t), keywords: 'crear nuevo ' + t }));
     Search.open({
       getState, commands: cmds,

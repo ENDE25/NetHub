@@ -449,12 +449,16 @@ kbd {
 .group-count { font-size: 10.5px; font-weight: 500; color: var(--text-faint); }
 .group-btn { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 5px; background: transparent; color: var(--text-dim); }
 .group-btn:hover { background: var(--surface-hover); color: var(--text); }
-.group-box.frame { border-style: dashed; border-width: 1.5px; }
-.group-box.frame.selected { border-style: solid; }
-.group-box.frame .group-head { padding: 3px 7px; gap: 5px; color: var(--text-dim); }
-.group-box.frame .group-name { color: var(--text); }
-.group-resize { position: absolute; right: -1px; bottom: -1px; width: 18px; height: 18px; cursor: nwse-resize; pointer-events: auto; border-right: 3px solid var(--gc); border-bottom: 3px solid var(--gc); border-radius: 0 0 16px 0; opacity: 0.55; }
-.group-resize:hover { opacity: 1; }
+/* Grupo: a dashed container card that grows around whatever is dropped into it */
+.node.node-group, .node-child.node-group { --card-bg: rgba(138, 155, 180, 0.07); --card-edge: #52627c; --card-edge-hover: #6f82a3; border: 1.5px dashed var(--card-edge); border-radius: 16px; padding: 9px 12px 12px; min-width: 150px; max-width: none; width: max-content; box-shadow: none; }
+.node.node-group:hover { box-shadow: none; }
+.node-group .node-head { align-items: center; min-height: 26px; }
+.node-group .node-icon { width: 26px; height: 26px; border-radius: 8px; background: rgba(138, 155, 180, 0.14); color: var(--text-dim); }
+.group-title { font-size: 13px; font-weight: 600; flex: 1; min-width: 0; }
+.group-title-spacer { flex: 1; }
+.node-group > .node-children.group-children { display: grid; grid-template-columns: repeat(var(--cols, 1), 196px); gap: 10px; margin-top: 10px; }
+.group-empty { margin-top: 9px; padding: 20px 26px; border: 1px dashed var(--border-strong); border-radius: 10px; color: var(--text-faint); font-size: 12px; text-align: center; white-space: nowrap; }
+.node.node-group.drop-target, .node-child.node-group.drop-target { background: rgba(42, 217, 184, 0.09); border-color: var(--accent); }
 .group-card { border-style: dashed; border-color: var(--gc); }
 .group-card.selected { border-style: solid; box-shadow: 0 0 0 1px rgba(210, 225, 255, 0.16), 0 0 22px 3px rgba(170, 200, 255, 0.28), var(--shadow-md); filter: brightness(1.14); }
 .gc-icons { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }

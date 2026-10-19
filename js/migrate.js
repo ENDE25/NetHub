@@ -219,6 +219,7 @@
     n.isp = str(raw.isp);
     n.ispImage = /^data:image\/[a-z0-9.+-]+;base64,/i.test(str(raw.ispImage)) ? raw.ispImage : '';
     n.interfaces = arr(raw.interfaces).map(sanitizeIface);
+    if (n.type === 'group') n.interfaces = [];
     n.services = arr(raw.services).filter(isObj).map((s) => {
       const o = Factory.service(str(s.name), str(s.port));
       o.id = str(s.id) || o.id;
@@ -272,17 +273,13 @@
       cidr: str(o.cidr).trim(),
       notes: str(o.notes)
     }));
-    state.groups = arr(raw.groups).filter((g) => isObj(g) && typeof g.id === 'string').map((g) => {
-      const frame = isObj(g.frame) ? { x: num(g.frame.x), y: num(g.frame.y), w: Math.max(80, num(g.frame.w, 360)), h: Math.max(60, num(g.frame.h, 220)) } : null;
-      return {
-        id: g.id,
-        name: frame ? str(g.name).trim() : (str(g.name).trim() || 'Grupo'),
-        color: color(g.color, frame ? '#8795a8' : '#5b8cff'),
-        collapsed: frame ? false : !!g.collapsed,
-        x: num(g.x), y: num(g.y),
-        frame
-      };
-    });
+    state.groups = arr(raw.groups).filter((g) => isObj(g) && typeof g.id === 'string').map((g) => ({
+      id: g.id,
+      name: str(g.name).trim() || 'Grupo',
+      color: color(g.color, '#5b8cff'),
+      collapsed: !!g.collapsed,
+      x: num(g.x), y: num(g.y)
+    }));
 
     // Groups only apply to top-level nodes; links must point at existing nodes.
     const groupIds = new Set(state.groups.map((g) => g.id));

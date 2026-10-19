@@ -373,6 +373,8 @@
 
     // End-user devices get a soft blue card; in the logical layer a node on several networks (a gateway) gets a soft red one.
     const gateway = layer === 'logical' && nets.length > 1;
+    if (n.type === 'group') return this._buildGroupNode(n, depth, el, kids);
+
     el.className = (depth === 0 ? 'node' : 'node-child') + ' type-' + meta.group + ' device-' + n.type + cls +
       (meta.endpoint ? ' is-endpoint' : '') + (gateway ? ' is-gateway' : '');
     if (gateway) el.title = 'Gateway: pertenece a ' + nets.map((x) => x.name).join(' y ');
@@ -435,6 +437,23 @@
       const img = el.querySelector('.node-isp-image');
       if (img) img.addEventListener('load', () => this._schedule(), { once: true });
     }
+    return el;
+  };
+
+  // A Grupo is a container card: dashed, optional name, any node can be dropped inside and it grows to fit them.
+  Topology.prototype._buildGroupNode = function (n, depth, el, kids) {
+    const cols = Math.min(4, Math.max(1, Math.ceil(Math.sqrt(kids.length))));
+    el.className = (depth === 0 ? 'node' : 'node-child') + ' node-group';
+    const toggle = kids.length
+      ? '<button type="button" class="node-toggle" data-act="toggle" title="' + (n.collapsed ? 'Expandir' : 'Colapsar') + ' contenido">' + Icons.svg(n.collapsed ? 'chevronRight' : 'chevronDown', 13) + '</button>'
+      : '';
+    el.innerHTML = '<div class="node-head"><span class="node-icon">' + Icons.svg('group', depth === 0 ? 18 : 15) + '</span>' +
+      (n.name ? '<span class="node-name group-title">' + esc(n.name) + '</span>' : '<span class="group-title-spacer"></span>') + toggle + '</div>' +
+      (!kids.length ? '<div class="group-empty">Arrastra nodos aquí</div>'
+        : n.collapsed ? '<button type="button" class="node-collapsed" data-act="toggle">' + Icons.svg('chevronRight', 12) + kids.length + (kids.length === 1 ? ' elemento' : ' elementos') + '</button>'
+          : '<div class="node-children group-children" style="--cols:' + cols + '"></div>');
+    const holder = el.querySelector(':scope > .node-children');
+    if (holder) kids.forEach((k) => holder.appendChild(this._buildNode(k, depth + 1)));
     return el;
   };
 
@@ -758,17 +777,7 @@
       } else if (c.kind === 'group') {
         this._beginMove(this.state().nodes.filter((n) => n.groupId === c.group.id).map((n) => n.id));
         if (c.collapsed) c.groupStart = { x: c.group.x, y: c.group.y };
-        if (c.group.frame) c.frameStart = { x: c.group.frame.x, y: c.group.frame.y };
       }
-    }
-    if (c.kind === 'frame-resize') {
-      const zz = this.state().view.zoom;
-      const f = c.group.frame;
-      f.w = Math.max(120, Math.round(c.w0 + (e.clientX - c.startX) / zz));
-      f.h = Math.max(80, Math.round(c.h0 + (e.clientY - c.startY) / zz));
-      if (this.state().view.snap && !e.altKey) { f.w = Math.max(120, snap(f.x + f.w) - f.x); f.h = Math.max(80, snap(f.y + f.h) - f.y); }
-      this.updateGroups();
-      return;
     }
     if (c.kind === 'nested') {
       c.ghost.style.left = (e.clientX + 12) + 'px';
@@ -782,8 +791,7 @@
       // Snap the grabbed node (or the group's first member) and keep everyone else at the same offset.
       const refId = c.kind === 'nodes' ? c.id : Array.from(c.moving)[0];
       const s = c.starts[refId];
-      if (c.frameStart) { dx = snap(c.frameStart.x + dx) - c.frameStart.x; dy = snap(c.frameStart.y + dy) - c.frameStart.y; }
-      else if (s) { dx = snap(s.x + dx) - s.x; dy = snap(s.y + dy) - s.y; }
+      if (s) { dx = snap(s.x + dx) - s.x; dy = snap(s.y + dy) - s.y; }
       else if (c.groupStart) { dx = snap(c.groupStart.x + dx) - c.groupStart.x; dy = snap(c.groupStart.y + dy) - c.groupStart.y; }
     }
     c.dx = dx; c.dy = dy;
@@ -795,7 +803,6 @@
       const el = this.nodeEls[n.id];
       if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; }
     });
-    if (c.frameStart) { c.group.frame.x = c.frameStart.x + dx; c.group.frame.y = c.frameStart.y + dy; }
     if (c.groupStart) {
       c.group.x = c.groupStart.x + dx; c.group.y = c.groupStart.y + dy;
       const el = this.groupEls['card:' + c.group.id];
@@ -808,7 +815,7 @@
     });
     if (c.kind === 'nodes') {
       const ids = Array.from(c.moving);
-      this._setDropHover(ids.length && ids.every((id) => this.ix.get(id) && Model.typeMeta(this.ix.get(id).type).virtual) ? this._nestTargetAt(e.clientX, e.clientY, ids) : null);
+      this._setDropHover(ids.length ? this._nestTargetAt(e.clientX, e.clientY, ids) : null);
     }
     this.updateGroups();
     this.updateSegments();
@@ -836,7 +843,7 @@
   };
 
   // Innermost node under the pointer that can take `type` as a child (skipping the dragged nodes and what is inside them).
-  Topology.prototype._nestParentAt = function (x, y, type, excludeIds) {
+  Topology.prototype._nestParentAt = function (x, y, types, excludeIds) {
     const skip = new Set(excludeIds);
     excludeIds.forEach((id) => this.ix.descendants(id).forEach((d) => skip.add(d.id)));
     const els = document.elementsFromPoint(x, y);
@@ -845,7 +852,7 @@
       if (!nodeEl || skip.has(nodeEl.dataset.nodeId)) continue;
       let n = this.ix.get(nodeEl.dataset.nodeId);
       while (n) {
-        if (!skip.has(n.id) && Model.canNest(type, n.type)) return n;
+        if (!skip.has(n.id) && types.every((t) => Model.canNest(t, n.type))) return n;
         n = n.parentId ? this.ix.get(n.parentId) : null;
       }
       return null;
@@ -854,12 +861,11 @@
   };
 
   Topology.prototype._nestTargetAt = function (x, y, ids) {
-    const first = this.ix.get(ids[0]);
-    if (!first || !ids.every((id) => this.ix.get(id) && Model.typeMeta(this.ix.get(id).type).virtual)) return null;
-    // all moved nodes must be allowed in the same host; use the strictest type (a VM) when mixed
-    const type = ids.some((id) => this.ix.get(id).type === 'vm') ? 'vm' : first.type;
-    const t = this._nestParentAt(x, y, type, ids);
-    return t && ids.every((id) => (this.ix.get(id).parentId || null) !== t.id || ids.length > 1) ? t : null;
+    const nodes = ids.map((id) => this.ix.get(id));
+    if (!nodes.length || nodes.some((n) => !n)) return null;
+    // the host under the pointer must accept every moved node
+    const t = this._nestParentAt(x, y, nodes.map((n) => n.type), ids);
+    return t && (nodes.length > 1 || (nodes[0].parentId || null) !== t.id) ? t : null;
   };
 
   // True when the pointer is over empty canvas (no node, control or panel in the way).
@@ -886,7 +892,6 @@
       const w = this.screenToWorld(e.clientX, e.clientY);
       const fit = state.view.snap ? snap : Math.round;
       Model.setParent(state, n.id, null, { x: fit(w.x - 95), y: fit(w.y - 30) });
-      this.assignFrames([n.id]);
       this.commit('unnest');
       this.render();
       this.setSelection([n.id]);
@@ -898,16 +903,6 @@
     this.dragCtx = null;
     if (c.kind === 'nested') {
       if (c.moved) this._finishNestedDrag(c, e);
-      return;
-    }
-    if (c.kind === 'frame-resize') {
-      if (c.moved) {
-        this._justDragged = true;
-        setTimeout(() => { this._justDragged = false; }, 0);
-        this.assignFrames();
-        this.commit('frame-resize');
-        this.render();
-      }
       return;
     }
     if (c.moved && c.kind === 'nodes') {
@@ -928,10 +923,7 @@
       // the click that follows a drag must not also select the group header that was dragged
       this._justDragged = true;
       setTimeout(() => { this._justDragged = false; }, 0);
-      // a dragged node may have entered or left a frame, and a moved frame may have reached other nodes
-      this.assignFrames(c.kind === 'nodes' ? Array.from(c.moving) : null);
       this.commit('move');
-      if (c.kind === 'group' && c.group.frame) this.render();
       return;
     }
     if (c.kind === 'group') {
@@ -981,13 +973,6 @@
 
   Topology.prototype._onGroupMouseDown = function (e) {
     if (e.button !== 0) return;
-    const grip = e.target.closest('.group-resize');
-    if (grip) {
-      e.stopPropagation();
-      const fg = this.state().groups.find((x) => x.id === grip.dataset.groupId);
-      if (fg && fg.frame) this.dragCtx = { kind: 'frame-resize', group: fg, startX: e.clientX, startY: e.clientY, moved: false, w0: fg.frame.w, h0: fg.frame.h };
-      return;
-    }
     const head = e.target.closest('.group-head');
     if (!head) return;
     e.stopPropagation();
@@ -1009,7 +994,7 @@
 
   Topology.prototype.setGroupCollapsed = function (gid, collapsed) {
     const g = this.state().groups.find((x) => x.id === gid);
-    if (!g || g.frame) return;
+    if (!g) return;
     if (collapsed) {
       const members = this.state().nodes.filter((n) => n.groupId === gid && this.boxes[n.id]);
       if (members.length) {
@@ -1032,7 +1017,6 @@
     this.groupBounds = {};
     const state = this.state();
     state.groups.forEach((g) => {
-      if (g.frame) { this._drawFrame(g); return; }
       if (g.collapsed) return;
       const members = state.nodes.filter((n) => n.groupId === g.id && this.boxes[n.id]);
       if (!members.length) return;
@@ -1054,59 +1038,6 @@
         '<button type="button" class="group-btn" data-act="group-collapse" title="Colapsar grupo">' + Icons.svg('chevronUp', 12) + '</button></div>';
       this.groupsLayer.appendChild(box);
     });
-  };
-
-  // A "Grupo" figure: free rectangle with an optional name, a grip to move it and a corner to resize it.
-  Topology.prototype._drawFrame = function (g) {
-    const f = g.frame;
-    this.groupBounds[g.id] = { x: f.x, y: f.y, w: f.w, h: f.h };
-    const box = document.createElement('div');
-    box.className = 'group-box frame' + (this.selGroup === g.id ? ' selected' : '');
-    box.dataset.groupId = g.id;
-    box.style.cssText = 'left:' + f.x + 'px;top:' + f.y + 'px;width:' + f.w + 'px;height:' + f.h + 'px;--gc:' + g.color;
-    box.innerHTML = '<div class="group-head" data-group-id="' + esc(g.id) + '">' + Icons.svg('group', 12) +
-      (g.name ? '<span class="group-name">' + esc(g.name) + '</span>' : '') + '</div>' +
-      '<div class="group-resize" data-group-id="' + esc(g.id) + '" title="Cambiar tamaño"></div>';
-    this.groupsLayer.appendChild(box);
-  };
-
-  // Centre of a top-level node (from its measured box, or its position if it is not drawn yet).
-  Topology.prototype._centerOf = function (n) {
-    const b = this.boxes[n.id];
-    return b ? { x: b.x + b.w / 2, y: b.y + b.h / 2 } : { x: n.x + 95, y: n.y + 34 };
-  };
-
-  // Frames own the top-level nodes whose centre is inside them (the smallest frame wins); a node that leaves
-  // every frame is released. Groups made from a selection are left alone unless a frame takes the node.
-  Topology.prototype.assignFrames = function (ids) {
-    const state = this.state();
-    const frames = state.groups.filter((g) => g.frame);
-    if (!frames.length && !state.nodes.some((n) => n.groupId && !this.ix.isTop(n.id))) return;
-    const list = ids ? state.nodes.filter((n) => ids.includes(n.id)) : state.nodes;
-    list.forEach((n) => {
-      if (n.parentId) return;
-      const c = this._centerOf(n);
-      let best = null;
-      frames.forEach((g) => {
-        const f = g.frame;
-        if (c.x >= f.x && c.x <= f.x + f.w && c.y >= f.y && c.y <= f.y + f.h && (!best || f.w * f.h < best.frame.w * best.frame.h)) best = g;
-      });
-      if (best) n.groupId = best.id;
-      else if (n.groupId && frames.some((g) => g.id === n.groupId)) n.groupId = '';
-    });
-  };
-
-  Topology.prototype.addFrame = function (pos, w, h) {
-    const state = this.state();
-    const W = w || 360, H = h || 220;
-    const fit = state.view.snap ? snap : Math.round;
-    const g = Factory.frame(fit(pos.x - W / 2), fit(pos.y - H / 2), W, H);
-    state.groups.push(g);
-    this.assignFrames();
-    this.commit('frame-add');
-    this.render();
-    this.selectGroup(g.id);
-    return g;
   };
 
   // ---------- Logical / overlay layers: convex hulls around members ----------
@@ -1168,7 +1099,9 @@
     if (!box) return null;
     const iface = (node.interfaces || []).find((i) => i.id === ep.ifaceId) || null;
     const vis = key.indexOf('g:') === 0 ? null : this.ix.get(key);
-    return { key, box, node, iface, nested: !!(vis && vis.parentId), fixed: iface && SIDES.includes(iface.side) ? iface.side : null };
+    const parent = vis && vis.parentId ? this.ix.get(vis.parentId) : null;
+    // inside = lives in some card; nested = lives inside another machine (a Grupo is only a container, so it does not count)
+    return { key, box, node, iface, inside: !!parent, nested: !!parent && parent.type !== 'group', fixed: iface && SIDES.includes(iface.side) ? iface.side : null };
   };
 
   Topology.prototype._computeLinks = function () {
@@ -1183,8 +1116,8 @@
       const dx = cb.x - ca.x, dy = cb.y - ca.y;
       const horizontal = Math.abs(dx) / ((ea.box.w + eb.box.w) / 2) > Math.abs(dy) / ((ea.box.h + eb.box.h) / 2);
       const pick = (e, sx, sy, forceH) => e.fixed || (forceH || horizontal ? (sx > 0 ? 'right' : 'left') : (sy > 0 ? 'bottom' : 'top'));
-      const sideA = pick(ea, dx, dy, ea.nested);
-      const sideB = pick(eb, -dx, -dy, eb.nested);
+      const sideA = pick(ea, dx, dy, ea.inside);
+      const sideB = pick(eb, -dx, -dy, eb.inside);
       geoms.push({ link, ea, eb, sideA, sideB, ca, cb, style });
     });
 
@@ -1214,6 +1147,7 @@
       g.pB = pointOnSide(g.eb.box, g.sideB, g.offB || 0);
       g.dA = DIR[g.sideA]; g.dB = DIR[g.sideB];
       g.nested = g.ea.nested || g.eb.nested;
+      g.above = g.ea.inside || g.eb.inside;
       if (g.style === 'orthogonal') {
         const pts = orthoPoints(g.pA, g.dA, g.pB, g.dB);
         g.d = roundedPath(pts, 9);
@@ -1272,7 +1206,7 @@
   Topology.prototype._drawLink = function (g) {
     const self = this;
     const link = g.link;
-    const layer = g.nested ? this.linksAbove : this.linksBehind;
+    const layer = g.above ? this.linksAbove : this.linksBehind;
     const cls = 'link-g m-' + link.medium + (link.id === this.selLink ? ' selected' : '') + (this._hot.has(link.id) ? ' hot' : '')+
       (g.nested ? ' nested' : '');
     const gEl = svgEl('g', { 'data-id': link.id }, cls);
@@ -1382,6 +1316,8 @@
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const nodeEl = el && el.closest ? el.closest('[data-node-id]') : null;
     if (!nodeEl || nodeEl.dataset.nodeId === excludeId) return null;
+    const target = this.ix.get(nodeEl.dataset.nodeId);
+    if (target && Model.typeMeta(target.type).noLinks) return null;   // a Grupo is only a container
     const dot = el.closest('.anchor-dot');
     return { nodeId: nodeEl.dataset.nodeId, side: dot ? dot.dataset.side : '' };
   };
@@ -1457,8 +1393,8 @@
   };
 
   Topology.prototype._dropTarget = function (e, type) {
-    if (!NODE_TYPES[type] || !NODE_TYPES[type].virtual) return null;
-    return this._nestParentAt(e.clientX, e.clientY, type, []);
+    if (!NODE_TYPES[type]) return null;
+    return this._nestParentAt(e.clientX, e.clientY, [type], []);
   };
 
   Topology.prototype._onDrop = function (e) {
@@ -1487,7 +1423,6 @@
       n.y = (this.state().view.snap ? snap : Math.round)(pos.y - (meta.virtual ? 30 : 34));
     }
     state.nodes.push(n);
-    if (!parentId) this.assignFrames([n.id]);
     this.commit('add');
     if (parentId) {
       const p = this.ix.get(parentId);
@@ -1625,13 +1560,14 @@
     const ids = this.topSelection();
     if (!ids.length) return null;
     const state = this.state();
-    const g = Factory.group(name || 'Grupo', NetHub.PALETTE[state.groups.length % NetHub.PALETTE.length]);
-    state.groups.push(g);
-    state.nodes.forEach((n) => { if (ids.includes(n.id)) n.groupId = g.id; });
-    Model.pruneEmptyGroups(state);
+    const picked = state.nodes.filter((n) => ids.includes(n.id));
+    const g = Factory.node('group', Math.min.apply(null, picked.map((n) => n.x)), Math.min.apply(null, picked.map((n) => n.y)));
+    if (name) g.name = name;
+    state.nodes.push(g);
+    picked.forEach((n) => { n.parentId = g.id; n.groupId = ''; });
     this.commit('group');
     this.render();
-    this.selectGroup(g.id);
+    this.setSelection([g.id]);
     return g;
   };
 

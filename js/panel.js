@@ -255,6 +255,7 @@
     this._header(icon, n.name || meta.label, meta.label + (parent ? ' en ' + parent.name : ''), { back: !!parent, actions });
 
     const kids = ix.children(n.id);
+    if (n.type === 'group') return this._renderGroupNode(n, kids, parent);
     const tabs = [{ id: 'general', label: 'General' }];
     if (!meta.noIface) tabs.push({ id: 'interfaces', label: 'Interfaces', count: n.interfaces.length });
     if (n.type !== 'isp') tabs.push({ id: 'services', label: 'Servicios', count: n.services.length });
@@ -265,6 +266,30 @@
     this.body.innerHTML = '';
     const builders = { general: '_tabGeneral', interfaces: '_tabInterfaces', services: '_tabServices', content: '_tabContent', overlays: '_tabOverlays' };
     this.body.appendChild(this[builders[this.tab]](n, state, ix));
+    return true;
+  };
+
+  // A Grupo only has an (optional) name.
+  Panel.prototype._renderGroupNode = function (n, kids, parent) {
+    const self = this;
+    this._header({ html: Icons.svg('group', 18) }, n.name || 'Grupo', 'Grupo · ' + kids.length + (kids.length === 1 ? ' nodo' : ' nodos') + (parent ? ' en ' + parent.name : ''), {
+      back: !!parent,
+      actions: [{ icon: 'map', title: 'Ver en el mapa', onClick: () => self.onShowInMap(n.id) },
+        { icon: 'copy', title: 'Duplicar (Ctrl+D)', onClick: () => self.onDuplicateNode(n.id) },
+        { icon: 'trash', title: 'Eliminar grupo (los nodos se conservan)', danger: true, onClick: () => self.onDeleteNode(n.id) }]
+    });
+    this._setTabs(null);
+    const wrap = document.createElement('div');
+    wrap.className = 'details-pane';
+    wrap.innerHTML = field('Nombre', textInput('name', n.name, 'Opcional'), 'Arrastra nodos sobre el grupo para meterlos dentro; se ajusta solo al tamaño') +
+      '<button class="btn btn-danger btn-block danger-zone" data-role="delete">' + Icons.svg('trash', 14) + '<span>Eliminar grupo (los nodos se conservan)</span></button>';
+    bindFields(wrap, n, () => {
+      self.root.querySelector('.sp-name').textContent = n.name || 'Grupo';
+      self._changed(n.id, false);
+    });
+    wrap.querySelector('[data-role="delete"]').addEventListener('click', () => self.onDeleteNode(n.id));
+    this.body.innerHTML = '';
+    this.body.appendChild(wrap);
     return true;
   };
 
@@ -281,8 +306,8 @@
     const blocked = new Set([n.id].concat(ix.descendants(n.id).map((d) => d.id)));
     const hostOpts = [{ v: '', l: '(Nivel superior del mapa)' }].concat(state.nodes
       .filter((x) => !blocked.has(x.id) && Model.typeMeta(x.type).canHost)
-      .map((x) => ({ v: x.id, l: (x.name || Model.typeMeta(x.type).label) + ' (' + Model.typeMeta(x.type).label + ')' })));
-    const groupOpts = [{ v: '', l: 'Sin grupo' }].concat(state.groups.filter((g) => !g.frame).map((g) => ({ v: g.id, l: g.name })), [{ v: '__new__', l: '+ Nuevo grupo...' }]);
+      .map((x) => ({ v: x.id, l: x.name ? x.name + ' (' + Model.typeMeta(x.type).label + ')' : Model.typeMeta(x.type).label })));
+    const groupOpts = [{ v: '', l: 'Sin grupo' }].concat(state.groups.map((g) => ({ v: g.id, l: g.name })));
 
     const ispProvider = n.type === 'isp'
       ? field('Proveedor', selectHtml('isp', [{ v: '', l: 'Selecciona un proveedor...' }].concat(ISP_PROVIDERS.map((p) => ({ v: p.id, l: p.name }))), n.isp)) +
@@ -302,7 +327,7 @@
       ispProvider +
       field('Función', textInput('role', n.role, 'Gateway, DNS, NextCloud...'), 'Etiqueta de color en el nodo') +
       field('Etiquetas', '<input type="text" data-role="tags" value="' + esc(n.tags.join(', ')) + '" placeholder="produccion, wifi, laboratorio" autocomplete="off"/>', 'Separadas por comas') +
-      (n.parentId ? '' : field('Grupo', selectHtml('groupId', groupOpts, n.groupId), 'Los nodos del mismo grupo se dibujan juntos')) +
+      (n.parentId || !state.groups.length ? '' : field('Grupo (antiguo)', selectHtml('groupId', groupOpts, n.groupId), 'Los grupos nuevos son tarjetas: arrastra el nodo dentro de un Grupo')) +
       field('Notas', '<textarea data-f="notes" rows="4" placeholder="Notas libres">' + esc(n.notes) + '</textarea>') +
       section('Campos personalizados', 'No guardes contraseñas aquí. Anota dónde está la credencial (p. ej. "Bitwarden: Router casa").') +
       '<div class="kv-list" data-role="fields"></div>' +
@@ -336,17 +361,6 @@
         }
         self._changed(n.id, true, null, true);
       } else if (key === 'groupId') {
-        if (value === '__new__') {
-          n.groupId = '';
-          UI.prompt({ title: 'Nuevo grupo', label: 'Nombre del grupo', placeholder: 'Planta 1, Rack, Oficina...', confirmLabel: 'Crear', onConfirm: (name) => {
-            const g = Factory.group(name, PALETTE[state.groups.length % PALETTE.length]);
-            state.groups.push(g);
-            n.groupId = g.id;
-            self._changed(n.id, true, null, true);
-          } });
-          self._render();
-          return;
-        }
         Model.pruneEmptyGroups(state);
         self._changed(n.id, true, null, true);
       } else if (key === 'isp') {
@@ -742,29 +756,6 @@
     const members = state.nodes.filter((n) => n.groupId === g.id);
     this._header({ html: Icons.svg('group', 18), color: g.color, bg: g.color + '26' }, g.name || 'Grupo', 'Grupo · ' + members.length + (members.length === 1 ? ' nodo' : ' nodos'), {});
     this._setTabs(null);
-    if (g.frame) {
-      // the "Grupo" figure only has an (optional) name
-      const fw = document.createElement('div');
-      fw.className = 'details-pane';
-      fw.innerHTML = field('Nombre', textInput('name', g.name, 'Opcional'), 'Los nodos que queden dentro del marco pertenecen al grupo') +
-        '<button class="btn btn-danger btn-block danger-zone" data-role="delete-frame">' + Icons.svg('trash', 14) + '<span>Eliminar grupo (los nodos se conservan)</span></button>';
-      bindFields(fw, g, () => {
-        self.commit('group:' + g.id + ':name');
-        self.root.querySelector('.sp-name').textContent = g.name || 'Grupo';
-        self.onChanged({ full: true });
-      });
-      fw.querySelector('[data-role="delete-frame"]').addEventListener('click', () => {
-        state.nodes.forEach((n) => { if (n.groupId === g.id) n.groupId = ''; });
-        state.groups = state.groups.filter((x) => x.id !== g.id);
-        self.commit('frame-delete');
-        self.onChanged({ full: true });
-        self.close();
-        self.onClose();
-      });
-      this.body.innerHTML = '';
-      this.body.appendChild(fw);
-      return true;
-    }
     const wrap = document.createElement('div');
     wrap.className = 'details-pane';
     wrap.innerHTML =

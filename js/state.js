@@ -47,6 +47,7 @@
     isp:      { label: 'ISP / Operador',    icon: 'cloud',    cat: 'wan',     group: 'wan',       noIface: true },
     cloud:    { label: 'Internet / WAN',    icon: 'cloud',    cat: 'wan',     group: 'wan',       noIface: true },
     vps:      { label: 'Servidor cloud / VPS', icon: 'vps',   cat: 'wan',     group: 'wan',       canHost: true },
+    group:    { label: 'Grupo',             icon: 'group',    cat: 'other',   group: 'group',     canHost: true, hostsAny: true, noIface: true, noLinks: true },
     generic:  { label: 'Otro',              icon: 'generic',  cat: 'other',   group: 'other',     canHost: true }
   };
 
@@ -116,7 +117,9 @@
   // does not go inside another virtual machine/container.
   function canNest(childType, parentType) {
     const c = typeMeta(childType), p = typeMeta(parentType);
-    return !!c.virtual && !!p.canHost && !(childType === 'vm' && p.virtual);
+    if (!p.canHost) return false;
+    if (p.hostsAny) return true;                       // a Grupo takes any node
+    return !!c.virtual && !(childType === 'vm' && p.virtual);
   }
 
   // Finds the next free "prefixN" name for a node's interfaces (eth0 taken -> eth1, etc).
@@ -138,7 +141,7 @@
       return {
         id: uuid(),
         type: t,
-        name: meta.label,
+        name: t === 'group' ? '' : meta.label,    // a Grupo's name is optional
         parentId: null,
         x: Math.round(x || 0), y: Math.round(y || 0),
         os: '', model: '', role: '',
@@ -146,7 +149,7 @@
         notes: '',
         fields: [],
         isp: '', ispImage: '',
-        interfaces: [Factory.iface('eth0')],
+        interfaces: t === 'group' ? [] : [Factory.iface('eth0')],
         services: []
       };
     },
@@ -171,11 +174,7 @@
       return { id: uuid(), name: name || 'VPN', color: color || '#2ad9b8', cidr: '', notes: '' };
     },
     group(name, color) {
-      return { id: uuid(), name: name || 'Grupo', color: color || '#5b8cff', collapsed: false, x: 0, y: 0, frame: null };
-    },
-    // A "Grupo" figure: a free rectangle placed on the map. Nodes whose centre lies inside it belong to it. Name is optional.
-    frame(x, y, w, h) {
-      return { id: uuid(), name: '', color: '#8795a8', collapsed: false, x: 0, y: 0, frame: { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) } };
+      return { id: uuid(), name: name || 'Grupo', color: color || '#5b8cff', collapsed: false, x: 0, y: 0 };
     }
   };
 
@@ -241,7 +240,7 @@
 
   function pruneEmptyGroups(state) {
     const used = new Set(state.nodes.map((n) => n.groupId).filter(Boolean));
-    state.groups = state.groups.filter((g) => used.has(g.id) || g.frame);
+    state.groups = state.groups.filter((g) => used.has(g.id));
   }
 
   // Moves a node under a new parent (null = top level). Returns false if that would create a cycle

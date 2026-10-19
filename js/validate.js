@@ -120,7 +120,7 @@
         if (a) touched.add(a.id);
         if (b) touched.add(b.id);
       });
-      state.nodes.filter((n) => !n.parentId && !touched.has(n.id)).forEach((n) => {
+      state.nodes.filter((n) => !n.parentId && !touched.has(n.id) && !Model.typeMeta(n.type).noLinks).forEach((n) => {
         add('info', 'isolated', nodeName(n) + ' no tiene ninguna conexión', 'No hay cables entre este nodo (ni sus contenidos) y el resto del mapa.', { nodeId: n.id });
       });
     }
