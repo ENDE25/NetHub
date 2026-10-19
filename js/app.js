@@ -38,8 +38,7 @@
 
   // ---------- Init ----------
 
-  function init() {
-    const boot = Store.init();
+  function init(boot) {
     buildChrome();
     buildLibrary();
     buildTopology();
@@ -142,13 +141,14 @@
       '<span class="sb-item">' + nets + (nets === 1 ? ' red' : ' redes') + (ovs ? ' · ' + ovs + (ovs === 1 ? ' overlay' : ' overlays') : '') + '</span>' +
       '<span class="sb-spacer"></span>' +
       '<span class="sb-item sb-save' + (saveState.error ? ' error' : '') + '" title="' + esc(saveState.error || 'Los datos se guardan en este navegador (localStorage)') + '">' + esc(saveState.error ? 'Sin guardar' : saveState.text) + '</span>' +
-      '<span class="sb-item sb-usage" title="Espacio de localStorage usado (estimado, el límite suele ser ~5 MB)">' + usageText() + '</span>';
+      '<span class="sb-item sb-usage" title="Espacio usado por los mapas. En almacén OPFS no hay límite práctico; en localStorage el tope suele ser ~5 MB">' + usageText() + '</span>';
   }
 
   function usageText() {
     const u = Storage.usage();
     if (u.ratio > 0.8) warnStorage(u);
-    return (u.bytes / 1024 < 1000 ? Math.round(u.bytes / 1024) + ' KB' : (u.bytes / 1048576).toFixed(1) + ' MB') + ' de ~5 MB';
+    const size = u.bytes / 1024 < 1000 ? Math.round(u.bytes / 1024) + ' KB' : (u.bytes / 1048576).toFixed(1) + ' MB';
+    return u.backend === 'opfs' ? size + ' · almacén OPFS' : size + ' de ~5 MB';
   }
 
   const validateSoon = UI.debounce(() => {
@@ -729,7 +729,7 @@
   function wipeAll() {
     UI.confirm({
       title: 'Borrar todos los datos', message: 'Se eliminarán todos los mapas, versiones y copias guardadas en este navegador (incluida la copia del formato antiguo). Exporta antes si quieres conservarlos.', confirmLabel: 'Borrar todo', danger: true,
-      onConfirm: () => { Store.discardPending(); Storage.clearAll(); try { localStorage.removeItem(PREFS_KEY); } catch (e) { /* ignore */ } location.reload(); }
+      onConfirm: () => { Store.discardPending(); Storage.clearAll().then(() => { try { localStorage.removeItem(PREFS_KEY); } catch (e) { /* ignore */ } location.reload(); }); }
     });
   }
 
@@ -997,5 +997,5 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => { Store.init().then(init); });
 })(window);

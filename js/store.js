@@ -29,7 +29,11 @@
   function on(ev, fn) { (listeners[ev] = listeners[ev] || []).push(fn); }
   function emit(ev, data) { (listeners[ev] || []).forEach((fn) => fn(data)); }
 
-  function init() {
+  // Async because the storage backend (OPFS) has to be opened and read once before the app can start.
+  async function init() {
+    await Storage.init();
+    Storage.onWriteError(() => emit('status', { saved: false, error: 'No se pudo guardar en el almacenamiento del navegador' }));
+    Storage.onExternal((id) => { if (index && id === index.activeId) emit('external', {}); });
     const b = Storage.bootstrap();
     index = b.index;
     state = b.state;
@@ -51,8 +55,10 @@
     saveTimer = setTimeout(flush, 300);
   }
 
-  function flush() {
+  // lifecycle = the page is being hidden or closed: keep a synchronous copy in case the async write is cut short.
+  function flush(lifecycle) {
     clearTimeout(saveTimer);
+    if (lifecycle === true && index && (dirty || Storage.hasPending())) Storage.stashMap(index.activeId, state);
     if (!dirty) return true;
     dirty = false;
     const ok = Storage.saveMap(index.activeId, state);
@@ -248,12 +254,9 @@
 
   // ---------- Lifecycle ----------
 
-  window.addEventListener('pagehide', flush);
-  window.addEventListener('beforeunload', flush);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
-  window.addEventListener('storage', (e) => {
-    if (index && e.key === Storage.MAP_PREFIX + index.activeId && e.newValue !== null) emit('external', {});
-  });
+  window.addEventListener('pagehide', () => flush(true));
+  window.addEventListener('beforeunload', () => flush(true));
+  document.addEventListener('visibilitychange', () => { if (document.hidden) flush(true); });
 
   // Re-reads the active map from storage (another tab changed it), dropping local history.
   function reloadFromStorage() {

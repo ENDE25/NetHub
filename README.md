@@ -1,6 +1,6 @@
 # NetHub
 
-Bloc de notas visual para documentar una red. Todo se guarda en el `localStorage` del navegador: sin servidor, sin dependencias, sin recursos externos. Abre `index.html` (o sirve la carpeta con cualquier servidor estático).
+Bloc de notas visual para documentar una red. Todo se guarda en el navegador: sin servidor, sin dependencias, sin recursos externos. Los mapas van al almacén OPFS (sin el tope de 5 MB de localStorage) y, si el navegador no lo permite, a `localStorage`. Abre `index.html` (o sirve la carpeta con cualquier servidor estático).
 
 ## Qué incluye
 
@@ -14,5 +14,6 @@ Bloc de notas visual para documentar una red. Todo se guarda en el `localStorage
 ## Notas
 
 - No guardes contraseñas: usa un campo para indicar dónde está la credencial. Los exports son texto plano.
-- localStorage tiene un límite de ~5 MB; la barra de estado muestra el uso.
+- OPFS es un almacén interno del navegador, no un archivo visible: si borras los datos del sitio se pierde igual que con localStorage. Exporta copias de vez en cuando.
+- Si el navegador no ofrece OPFS se usa localStorage (~5 MB); la barra de estado indica cuál está activo y el espacio usado.
 - El cálculo de redes es solo IPv4.
