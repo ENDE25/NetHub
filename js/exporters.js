@@ -222,8 +222,11 @@
     });
 
     const drawLinks = (nested) => topology.geoms.filter((g) => !!g.nested === nested).forEach((g) => {
+      if (g.nested) {
+        out.push('<path d="' + g.d + '" fill="none" stroke="#6f7b8d" stroke-width="2" stroke-dasharray="6 5"/>');
+      }
       const dash = g.link.medium === 'wifi' ? ' stroke-dasharray="7 6"' : (g.link.medium === 'virtual' ? ' stroke-dasharray="2 5"' : (g.link.medium === 'tunnel' ? ' stroke-dasharray="9 4"' : ''));
-      out.push('<path d="' + g.d + '" fill="none" stroke="' + topology._linkColor(g) + '" stroke-width="2"' + dash + '/>');
+      if (!g.nested) out.push('<path d="' + g.d + '" fill="none" stroke="' + topology._linkColor(g) + '" stroke-width="2"' + dash + '/>');
       const cap = topology.linkCaption(g);
       if (cap) {
         const tw = cap.length * 6.2 + 10;
@@ -256,7 +259,7 @@
         return;
       }
       const color = GROUP_COLORS[meta.group] || '#94a3b8';
-      out.push('<rect x="' + b.x + '" y="' + b.y + '" width="' + b.w + '" height="' + b.h + '" rx="' + (depth ? 8 : 12) + '" fill="#171e28" stroke="#2c3847"' + (meta.group === 'container' || n.type === 'switch' ? ' stroke-dasharray="5 4"' : '') + '/>');
+      out.push('<rect x="' + b.x + '" y="' + b.y + '" width="' + b.w + '" height="' + b.h + '" rx="' + (depth ? 8 : 12) + '" fill="' + (meta.endpoint ? '#172540' : '#171e28') + '" stroke="' + (meta.endpoint ? '#2c4272' : '#2c3847') + '"' + (meta.group === 'container' || n.type === 'switch' ? ' stroke-dasharray="5 4"' : '') + '/>');
       const isz = depth ? 15 : 18, ix0 = b.x + 9, iy0 = b.y + 9;
       out.push('<rect x="' + ix0 + '" y="' + iy0 + '" width="' + (isz + 14) + '" height="' + (isz + 14) + '" rx="8" fill="' + color + '" fill-opacity="0.16"/>');
       out.push('<g transform="translate(' + (ix0 + 7) + ' ' + (iy0 + 7) + ') scale(' + (isz / 24) + ')" fill="none" stroke="' + color + '" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + Icons.path(meta.icon) + '</g>');

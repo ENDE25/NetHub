@@ -383,9 +383,12 @@
           '<button type="button" class="lg-main"><span class="lg-dot"></span><span class="lg-name">' + esc(d.name) + '</span><span class="lg-meta">' + esc(d.cidr && d.cidr !== d.name ? d.cidr : '') + '</span></button>' +
           '<button type="button" class="icon-btn lg-edit" title="Editar">' + Icons.svg('edit', 12) + '</button></div>').join('')
           : '<div class="lg-empty">' + (layer === 'logical' ? 'Aún no hay redes. Créalas en la vista Redes.' : 'Aún no hay overlays. Asígnalos desde un nodo.') + '</div>');
+      if (layer === 'logical') html += '<div class="lg-row static"><span class="lg-swatch gateway"></span><span class="lg-name">En varias redes (gateway)</span></div>';
     } else if (layer === 'physical') {
       const used = Array.from(new Set(s.links.map((l) => l.medium)));
-      if (used.length > 1) html = '<div class="lg-title">Cables</div>' + used.map((m) => '<div class="lg-row static"><span class="lg-line m-' + m + '" style="--c:' + (MEDIA[m] || MEDIA.ethernet).color + '"></span><span class="lg-name">' + esc((MEDIA[m] || MEDIA.ethernet).label) + '</span></div>').join('');
+      const lix = Model.index(s);
+      const hasNested = s.links.some((l) => { const ix = lix; const x = ix.get(l.a.nodeId), y = ix.get(l.b.nodeId); return (x && x.parentId) || (y && y.parentId); });
+      if (used.length > 1 || hasNested) html = '<div class="lg-title">Cables</div>' + (hasNested ? '<div class="lg-row static"><span class="lg-line nested"></span><span class="lg-name">Dentro de otra máquina</span></div>' : '') + used.map((m) => '<div class="lg-row static"><span class="lg-line m-' + m + '" style="--c:' + (MEDIA[m] || MEDIA.ethernet).color + '"></span><span class="lg-name">' + esc((MEDIA[m] || MEDIA.ethernet).label) + '</span></div>').join('');
     }
     lg.hidden = !html;
     lg.innerHTML = html;

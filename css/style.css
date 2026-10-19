@@ -372,6 +372,10 @@ kbd {
 .lg-line.m-virtual { border-top-style: dotted; }
 .lg-line.m-tunnel { border-top-style: dashed; }
 .lg-line.m-fiber { border-top-width: 3px; }
+.lg-line.nested { border-top: 2px dashed #6f7b8d; }
+.lg-swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; background: var(--card-bg); border: 1px solid var(--card-edge); }
+.lg-swatch.gateway { --card-bg: #2e1b1f; --card-edge: #62323a; }
+.lg-swatch.endpoint { --card-bg: #172540; --card-edge: #2c4272; }
 
 /* ------------------------------ Links (SVG) ------------------------------ */
 
@@ -382,8 +386,11 @@ kbd {
 .link-g.m-fiber .link-line { stroke-width: 3; }
 .link-g.m-usb .link-line { stroke-width: 1.5; }
 @keyframes link-dash-flow { to { stroke-dashoffset: -13; } }
+/* Cables of VMs/containers that live inside another machine: grey and dashed */
+.link-g.nested .link-line { stroke: #6f7b8d !important; stroke-dasharray: 6 5; stroke-linecap: butt; stroke-width: 2; animation: none; }
 .link-g.hot .link-line { stroke-width: 3; }
 .link-g.selected .link-line { stroke: var(--accent) !important; stroke-width: 3; }
+.link-g.nested.selected .link-line { stroke: var(--accent) !important; }
 .link-line.drawing { stroke: var(--accent); stroke-dasharray: 5 5; opacity: 0.85; }
 .link-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
 
@@ -454,8 +461,8 @@ kbd {
   position: absolute;
   min-width: 190px;
   max-width: 240px;
-  background: linear-gradient(180deg, var(--bg-elevated), var(--surface));
-  border: 1px solid var(--border-strong);
+  background: var(--card-bg);
+  border: 1px solid var(--card-edge);
   border-radius: var(--radius);
   padding: 11px 12px;
   box-shadow: var(--shadow-sm);
@@ -463,7 +470,7 @@ kbd {
   user-select: none;
   transition: box-shadow 0.15s, border-color 0.15s, opacity 0.2s;
 }
-.node:hover { border-color: #3a4759; box-shadow: var(--shadow-md); }
+.node:hover { border-color: var(--card-edge-hover); box-shadow: var(--shadow-md); }
 .node:active { cursor: grabbing; }
 .node.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-md); }
 .node.connect-target, .node-child.connect-target { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
@@ -472,26 +479,16 @@ kbd {
 .node.device-switch { border-style: dashed; }
 .node.has-vpn-ips { padding-bottom: 30px; }
 
-.node.device-host {
-  background: linear-gradient(180deg, #1c3f8f, #152f6e);
-  border-color: #4a76c9;
-  color: #ffffff;
-}
-.node.device-host:hover { border-color: #7096e0; box-shadow: 0 10px 28px -10px rgba(28, 63, 143, 0.7); }
-.node.device-host .node-icon { background: rgba(255, 255, 255, 0.16); color: #ffffff; }
-.node.device-host .node-name, .node.device-host .node-child-name { color: #ffffff; }
-.node.device-host .node-type { color: rgba(255, 255, 255, 0.78); }
-.node.device-host .node-foot { border-top-color: rgba(255, 255, 255, 0.25); }
-.node.device-host .chip, .node.device-host .ip-pill { background: rgba(255, 255, 255, 0.16); border-color: rgba(255, 255, 255, 0.35); color: #ffffff; }
-.node.device-host .node-toggle { color: #fff; }
+/* Card colour families: default, end-user devices (soft blue) and, in the logical layer, gateways (soft red) */
+.node, .node-child { --card-bg: linear-gradient(180deg, var(--bg-elevated), var(--surface)); --card-edge: var(--border-strong); --card-edge-hover: #3a4759; }
+.node-child { --card-edge: var(--border); --card-edge-hover: var(--border-strong); }
+.node.is-endpoint, .node-child.is-endpoint { --card-bg: linear-gradient(180deg, #172540, #121c32); --card-edge: #2c4272; --card-edge-hover: #3f5c9a; }
+.node.is-gateway, .node-child.is-gateway { --card-bg: linear-gradient(180deg, #2e1b1f, #241619); --card-edge: #62323a; --card-edge-hover: #8c4a53; }
 
 .node.has-vpn, .node.has-vpn:hover, .node.has-vpn.selected, .node.has-vpn.connect-target {
   border: 2px solid transparent;
   border-color: transparent !important;
-  background: linear-gradient(180deg, var(--bg-elevated), var(--surface)) padding-box, var(--vpn-ring) border-box;
-}
-.node.device-host.has-vpn, .node.device-host.has-vpn:hover, .node.device-host.has-vpn.selected {
-  background: linear-gradient(180deg, #1c3f8f, #152f6e) padding-box, var(--vpn-ring) border-box;
+  background: var(--card-bg) padding-box, var(--vpn-ring) border-box;
 }
 
 .node-head { display: flex; align-items: flex-start; gap: 9px; }
@@ -546,14 +543,14 @@ kbd {
 
 /* Nested nodes (VMs, containers...) */
 .node-children { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
-.node-child { position: relative; background: linear-gradient(180deg, var(--bg-elevated), var(--surface)); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 8px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, opacity 0.2s; }
+.node-child { position: relative; background: var(--card-bg); border: 1px solid var(--card-edge); border-radius: var(--radius-sm); padding: 7px 8px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, opacity 0.2s; }
 .node-child.has-vpn-ips { padding-bottom: 26px; }
-.node-child:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+.node-child:hover { border-color: var(--card-edge-hover); box-shadow: var(--shadow-sm); }
 .node-child.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .node-child.has-vpn, .node-child.has-vpn:hover, .node-child.has-vpn.selected, .node-child.has-vpn.connect-target {
   border: 2px solid transparent;
   border-color: transparent !important;
-  background: linear-gradient(180deg, var(--bg-elevated), var(--surface)) padding-box, var(--vpn-ring) border-box;
+  background: var(--card-bg) padding-box, var(--vpn-ring) border-box;
 }
 .node-child.type-container { border-style: dashed; }
 .node-child .node-icon { width: 24px; height: 24px; border-radius: 7px; background: var(--accent-soft); color: var(--accent); }
@@ -899,3 +896,7 @@ input[type="color"] { width: 64px; height: 36px; padding: 3px; background: var(-
   .library { position: absolute; z-index: 25; top: var(--topbar-h); bottom: 26px; left: 0; box-shadow: var(--shadow-lg); }
   .brand span { display: none; }
 }
+
+/* Chip that follows the pointer while a VM/container is dragged into another node */
+.drag-ghost { position: fixed; z-index: 250; display: flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 9px; background: var(--bg-elevated); border: 1px solid var(--accent); color: var(--text); font-size: 12px; font-weight: 600; box-shadow: var(--shadow-md); pointer-events: none; opacity: 0.92; }
+.drag-ghost .icon { color: var(--accent); }

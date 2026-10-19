@@ -33,16 +33,16 @@
     lb:       { label: 'Balanceador',       icon: 'lb',       cat: 'net',     group: 'net' },
     server:   { label: 'Servidor',          icon: 'server',   cat: 'compute', group: 'compute',   canHost: true },
     nas:      { label: 'NAS',               icon: 'server',   cat: 'compute', group: 'compute',   canHost: true },
-    host:     { label: 'Host / PC',         icon: 'host',     cat: 'compute', group: 'compute',   canHost: true },
-    laptop:   { label: 'Portátil',          icon: 'laptop',   cat: 'compute', group: 'compute',   canHost: true },
+    host:     { label: 'Host / PC',         icon: 'host',     cat: 'compute', group: 'compute',   canHost: true, endpoint: true },
+    laptop:   { label: 'Portátil',          icon: 'laptop',   cat: 'compute', group: 'compute',   canHost: true, endpoint: true },
     sbc:      { label: 'Placa (Raspberry…)', icon: 'sbc',     cat: 'compute', group: 'compute',   canHost: true },
     vm:       { label: 'Máquina virtual',   icon: 'vm',       cat: 'virtual', group: 'vm',        virtual: true, canHost: true },
     docker:   { label: 'Contenedor Docker', icon: 'docker',   cat: 'virtual', group: 'container', virtual: true },
     lxc:      { label: 'Contenedor / LXC',  icon: 'lxc',      cat: 'virtual', group: 'container', virtual: true, canHost: true },
-    camera:   { label: 'Cámara',            icon: 'camera',   cat: 'device',  group: 'device' },
-    printer:  { label: 'Impresora',         icon: 'printer',  cat: 'device',  group: 'device' },
-    phone:    { label: 'Móvil / tablet',    icon: 'phone',    cat: 'device',  group: 'device' },
-    iot:      { label: 'IoT / domótica',    icon: 'iot',      cat: 'device',  group: 'device' },
+    camera:   { label: 'Cámara',            icon: 'camera',   cat: 'device',  group: 'device', endpoint: true },
+    printer:  { label: 'Impresora',         icon: 'printer',  cat: 'device',  group: 'device', endpoint: true },
+    phone:    { label: 'Móvil / tablet',    icon: 'phone',    cat: 'device',  group: 'device', endpoint: true },
+    iot:      { label: 'IoT / domótica',    icon: 'iot',      cat: 'device',  group: 'device', endpoint: true },
     ups:      { label: 'SAI / PDU',         icon: 'ups',      cat: 'device',  group: 'device' },
     isp:      { label: 'ISP / Operador',    icon: 'cloud',    cat: 'wan',     group: 'wan' },
     cloud:    { label: 'Internet / WAN',    icon: 'cloud',    cat: 'wan',     group: 'wan' },
@@ -111,6 +111,13 @@
   // ---------- Factories ----------
 
   function typeMeta(type) { return NODE_TYPES[type] || NODE_TYPES.generic; }
+
+  // Whether a node of `childType` can live inside one of `parentType`: only virtual types nest, and a VM
+  // does not go inside another virtual machine/container.
+  function canNest(childType, parentType) {
+    const c = typeMeta(childType), p = typeMeta(parentType);
+    return !!c.virtual && !!p.canHost && !(childType === 'vm' && p.virtual);
+  }
 
   // Finds the next free "prefixN" name for a node's interfaces (eth0 taken -> eth1, etc).
   function nextInterfaceName(node, prefix) {
@@ -384,7 +391,7 @@
     uuid, CATEGORIES, NODE_TYPES, CHILD_TYPE_IDS, IFACE_KINDS, IP_MODES, MEDIA, SPEEDS, LAYERS, LINK_STYLES, PALETTE, SERVICE_PRESETS,
     Factory, nextInterfaceName,
     Model: {
-      typeMeta, index, removeNodes, pruneEmptyGroups, setParent, cloneNodes,
+      typeMeta, canNest, index, removeNodes, pruneEmptyGroups, setParent, cloneNodes,
       ifaceKindMeta, addrText, nodeIps, findNetworkByIp, networkOf, networksOfNode, overlaysOfNode, tunnelIface,
       serviceUrl, nodeUrls, serviceLabel, suggestUrl
     }

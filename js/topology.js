@@ -352,7 +352,11 @@
       return el;
     }
 
-    el.className = (depth === 0 ? 'node' : 'node-child') + ' type-' + meta.group + ' device-' + n.type + cls;
+    // End-user devices get a soft blue card; in the logical layer a node on several networks (a gateway) gets a soft red one.
+    const gateway = layer === 'logical' && nets.length > 1;
+    el.className = (depth === 0 ? 'node' : 'node-child') + ' type-' + meta.group + ' device-' + n.type + cls +
+      (meta.endpoint ? ' is-endpoint' : '') + (gateway ? ' is-gateway' : '');
+    if (gateway) el.title = 'Gateway: pertenece a ' + nets.map((x) => x.name).join(' y ');
     if (ring) el.style.setProperty('--vpn-ring', ring);
 
     const roleColor = n.role ? UI.colorForText(n.role) : null;
@@ -696,6 +700,7 @@
       } else {
         this.setSelection([id]);
       }
+      if (e.button === 0 && !additive) this.dragCtx = { kind: 'nested', id, startX: e.clientX, startY: e.clientY, moved: false };
       return;
     }
 
@@ -728,12 +733,19 @@
     if (!c.moved) {
       if (Math.hypot(e.clientX - c.startX, e.clientY - c.startY) < DRAG_THRESHOLD) return;
       c.moved = true;
+      if (c.kind === 'nested') this._startGhost(c);
       if (c.kind === 'nodes') {
         this._beginMove(Array.from(this.sel).filter((id) => this.ix.isTop(id)));
-      } else {
+      } else if (c.kind === 'group') {
         this._beginMove(this.state().nodes.filter((n) => n.groupId === c.group.id).map((n) => n.id));
         if (c.collapsed) c.groupStart = { x: c.group.x, y: c.group.y };
       }
+    }
+    if (c.kind === 'nested') {
+      c.ghost.style.left = (e.clientX + 12) + 'px';
+      c.ghost.style.top = (e.clientY + 12) + 'px';
+      this._setDropHover(this._nestTargetAt(e.clientX, e.clientY, [c.id]));
+      return;
     }
     const z = this.state().view.zoom;
     let dx = (e.clientX - c.startX) / z, dy = (e.clientY - c.startY) / z;
@@ -763,14 +775,113 @@
       const sb = c.startBoxes[k];
       if ((c.moving.has(b.top)) || (c.groupStart && b.top === 'g:' + c.group.id)) { b.x = sb.x + dx; b.y = sb.y + dy; }
     });
+    if (c.kind === 'nodes') {
+      const ids = Array.from(c.moving);
+      this._setDropHover(ids.length && ids.every((id) => this.ix.get(id) && Model.typeMeta(this.ix.get(id).type).virtual) ? this._nestTargetAt(e.clientX, e.clientY, ids) : null);
+    }
     this.updateGroups();
     this.updateSegments();
     this.updateLinks();
   };
 
+  // ---- Moving a VM/container into (or out of) another node by dragging it ----
+
+  Topology.prototype._startGhost = function (c) {
+    const n = this.ix.get(c.id);
+    const meta = Model.typeMeta(n ? n.type : 'generic');
+    const g = document.createElement('div');
+    g.className = 'drag-ghost';
+    g.innerHTML = Icons.svg(meta.icon, 14) + '<span>' + UI.escapeHtml(n ? n.name || meta.label : '') + '</span>';
+    document.body.appendChild(g);
+    c.ghost = g;
+  };
+
+  Topology.prototype._setDropHover = function (target) {
+    const id = target ? target.id : null;
+    if (this._hoverNest === id) return;
+    this._hoverNest = id;
+    this._clearDropHover();
+    if (id && this.nodeEls[id]) this.nodeEls[id].classList.add('drop-target');
+  };
+
+  // Innermost node under the pointer that can take `type` as a child (skipping the dragged nodes and what is inside them).
+  Topology.prototype._nestParentAt = function (x, y, type, excludeIds) {
+    const skip = new Set(excludeIds);
+    excludeIds.forEach((id) => this.ix.descendants(id).forEach((d) => skip.add(d.id)));
+    const els = document.elementsFromPoint(x, y);
+    for (const el of els) {
+      const nodeEl = el.closest ? el.closest('[data-node-id]') : null;
+      if (!nodeEl || skip.has(nodeEl.dataset.nodeId)) continue;
+      let n = this.ix.get(nodeEl.dataset.nodeId);
+      while (n) {
+        if (!skip.has(n.id) && Model.canNest(type, n.type)) return n;
+        n = n.parentId ? this.ix.get(n.parentId) : null;
+      }
+      return null;
+    }
+    return null;
+  };
+
+  Topology.prototype._nestTargetAt = function (x, y, ids) {
+    const first = this.ix.get(ids[0]);
+    if (!first || !ids.every((id) => this.ix.get(id) && Model.typeMeta(this.ix.get(id).type).virtual)) return null;
+    // all moved nodes must be allowed in the same host; use the strictest type (a VM) when mixed
+    const type = ids.some((id) => this.ix.get(id).type === 'vm') ? 'vm' : first.type;
+    const t = this._nestParentAt(x, y, type, ids);
+    return t && ids.every((id) => (this.ix.get(id).parentId || null) !== t.id || ids.length > 1) ? t : null;
+  };
+
+  // True when the pointer is over empty canvas (no node, control or panel in the way).
+  Topology.prototype._overEmptyCanvas = function (x, y) {
+    const els = document.elementsFromPoint(x, y);
+    if (!els.some((el) => el === this.viewport)) return false;
+    return !els.some((el) => el.closest && el.closest('[data-node-id], .float, .group-head, .side-panel'));
+  };
+
+  Topology.prototype._finishNestedDrag = function (c, e) {
+    if (c.ghost) c.ghost.remove();
+    this._setDropHover(null);
+    const state = this.state();
+    const n = this.ix.get(c.id);
+    if (!n) return;
+    const target = this._nestTargetAt(e.clientX, e.clientY, [c.id]);
+    if (target && target.id !== n.parentId) {
+      if (!Model.setParent(state, n.id, target.id)) return;
+      target.collapsed = false;
+      this.commit('nest');
+      this.render();
+      this.setSelection([n.id]);
+    } else if (!target && this._overEmptyCanvas(e.clientX, e.clientY)) {
+      const w = this.screenToWorld(e.clientX, e.clientY);
+      const fit = state.view.snap ? snap : Math.round;
+      Model.setParent(state, n.id, null, { x: fit(w.x - 95), y: fit(w.y - 30) });
+      this.commit('unnest');
+      this.render();
+      this.setSelection([n.id]);
+    }
+  };
+
   Topology.prototype._finishDrag = function (e) {
     const c = this.dragCtx;
     this.dragCtx = null;
+    if (c.kind === 'nested') {
+      if (c.moved) this._finishNestedDrag(c, e);
+      return;
+    }
+    if (c.moved && c.kind === 'nodes') {
+      const ids = Array.from(c.moving);
+      const target = this._nestTargetAt(e.clientX, e.clientY, ids);
+      this._setDropHover(null);
+      if (target) {
+        const state = this.state();
+        ids.forEach((id) => Model.setParent(state, id, target.id));
+        target.collapsed = false;
+        this.commit('nest');
+        this.render();
+        this.setSelection(ids);
+        return;
+      }
+    }
     if (c.moved) {
       // the click that follows a drag must not also select the group header that was dragged
       this._justDragged = true;
@@ -1238,10 +1349,7 @@
 
   Topology.prototype._dropTarget = function (e, type) {
     if (!NODE_TYPES[type] || !NODE_TYPES[type].virtual) return null;
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    const nodeEl = el && el.closest ? el.closest('[data-node-id]') : null;
-    const n = nodeEl && this.ix.get(nodeEl.dataset.nodeId);
-    return n && Model.typeMeta(n.type).canHost ? n : null;
+    return this._nestParentAt(e.clientX, e.clientY, type, []);
   };
 
   Topology.prototype._onDrop = function (e) {
