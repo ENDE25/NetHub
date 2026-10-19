@@ -1,97 +1,198 @@
-/* NetHub - Topology canvas engine: pan/zoom, node drag, link drawing */
+/* NetHub - Topology canvas engine: pan/zoom, selection, drag, links, layers, groups */
 (function (global) {
   'use strict';
-  const Icons = global.NetHub.Icons;
-  const UI = global.NetHub.UI;
-  const DEVICE_TYPES = global.NetHub.DEVICE_TYPES;
-  const CHILD_TYPES = global.NetHub.CHILD_TYPES;
-  const findEntity = global.NetHub.findEntity;
-  const Factory = global.NetHub.Factory;
-  const nextInterfaceName = global.NetHub.nextInterfaceName;
+  const NetHub = global.NetHub;
+  const { Icons, UI, Model, Net, Factory, NODE_TYPES, MEDIA } = NetHub;
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const SIDES = ['top', 'right', 'bottom', 'left'];
+  const DIR = { top: { x: 0, y: -1 }, right: { x: 1, y: 0 }, bottom: { x: 0, y: 1 }, left: { x: -1, y: 0 } };
+  const GRID = 13;
+  const DRAG_THRESHOLD = 3;
+  const GROUP_PAD = 26;
+  const GROUP_HEAD = 30;
+  const GROUP_CARD_W = 190;
 
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+  const esc = UI.escapeHtml;
+  const snap = (v) => Math.round(v / GRID) * GRID;
 
-  function vpnRing(state, device) {
-    const colors = (device.vpns || []).map((id) => (state.vpns || []).find((vpn) => vpn.id === id))
-      .filter(Boolean).map((vpn) => /^#[0-9a-f]{6}$/i.test(vpn.color) ? vpn.color : '#2ad9b8');
+  function svgEl(name, attrs, cls) {
+    const e = document.createElementNS(SVG_NS, name);
+    if (attrs) Object.keys(attrs).forEach((k) => e.setAttribute(k, attrs[k]));
+    if (cls) e.setAttribute('class', cls);
+    return e;
+  }
+
+  function ringStyle(overlays) {
+    const colors = overlays.map((o) => o.color);
     if (!colors.length) return null;
     if (colors.length === 1) return colors[0];
     const segment = 360 / colors.length;
-    const stops = colors.map((color, index) => {
-      const start = Math.round(index * segment * 100) / 100;
-      const end = Math.round((index + 1) * segment * 100) / 100;
-      return color + ' ' + start + 'deg ' + end + 'deg';
+    return 'conic-gradient(' + colors.map((c, i) => c + ' ' + (i * segment) + 'deg ' + ((i + 1) * segment) + 'deg').join(',') + ')';
+  }
+
+  function pointOnSide(box, side, off) {
+    const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+    if (side === 'top') return { x: cx + off, y: box.y };
+    if (side === 'bottom') return { x: cx + off, y: box.y + box.h };
+    if (side === 'left') return { x: box.x, y: cy + off };
+    return { x: box.x + box.w, y: cy + off };
+  }
+
+  function dedupe(points) {
+    const out = [];
+    points.forEach((p) => {
+      const last = out[out.length - 1];
+      if (!last || Math.abs(last.x - p.x) > 0.01 || Math.abs(last.y - p.y) > 0.01) out.push(p);
     });
-    return 'conic-gradient(' + stops.join(',') + ')';
+    return out;
   }
 
-  function vpnIpLabelsHtml(state, device) {
-    return (device.vpns || []).map((id) => (state.vpns || []).find((vpn) => vpn.id === id))
-      .filter((vpn) => vpn && device.vpnIps && device.vpnIps[vpn.id])
-      .map((vpn) => {
-        const color = /^#[0-9a-f]{6}$/i.test(vpn.color) ? vpn.color : '#2ad9b8';
-        return '<span class="vpn-ip" style="color:' + color + '" title="' + UI.escapeHtml(vpn.name) + '">' +
-          UI.escapeHtml(device.vpnIps[vpn.id]) + '</span>';
-      }).join('');
+  function orthoPoints(pA, dA, pB, dB) {
+    const S = 22;
+    const hA = dA.x !== 0, hB = dB.x !== 0;
+    let pts;
+    if (hA && hB) {
+      const mx = dA.x === dB.x
+        ? (dA.x > 0 ? Math.max(pA.x, pB.x) + S : Math.min(pA.x, pB.x) - S)
+        : (pA.x + pB.x) / 2;
+      pts = [pA, { x: mx, y: pA.y }, { x: mx, y: pB.y }, pB];
+    } else if (!hA && !hB) {
+      const my = dA.y === dB.y
+        ? (dA.y > 0 ? Math.max(pA.y, pB.y) + S : Math.min(pA.y, pB.y) - S)
+        : (pA.y + pB.y) / 2;
+      pts = [pA, { x: pA.x, y: my }, { x: pB.x, y: my }, pB];
+    } else if (hA) {
+      pts = [pA, { x: pB.x, y: pA.y }, pB];
+    } else {
+      pts = [pA, { x: pA.x, y: pB.y }, pB];
+    }
+    return dedupe(pts);
   }
 
-  // The four fixed anchor points on a node's own edge, shown on hover — drag
-  // from one to start a connection, or drop an existing link's end onto one.
-  function anchorDotsHtml() {
-    return SIDES.map((side) =>
-      '<button type="button" class="anchor-dot anchor-dot--' + side + '" data-role="anchor-dot" data-side="' + side +
-      '" title="Arrastra para crear una conexión"></button>'
-    ).join('');
+  function roundedPath(pts, r) {
+    if (pts.length < 3) return 'M' + pts[0].x + ' ' + pts[0].y + ' L' + pts[pts.length - 1].x + ' ' + pts[pts.length - 1].y;
+    let d = 'M' + pts[0].x + ' ' + pts[0].y;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1], p1 = pts[i], p2 = pts[i + 1];
+      const l1 = Math.hypot(p1.x - p0.x, p1.y - p0.y), l2 = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      const rad = Math.min(r, l1 / 2, l2 / 2);
+      const sx = p1.x - ((p1.x - p0.x) / l1) * rad, sy = p1.y - ((p1.y - p0.y) / l1) * rad;
+      const ex = p1.x + ((p2.x - p1.x) / l2) * rad, ey = p1.y + ((p2.y - p1.y) / l2) * rad;
+      d += ' L' + sx + ' ' + sy + ' Q' + p1.x + ' ' + p1.y + ' ' + ex + ' ' + ey;
+    }
+    const last = pts[pts.length - 1];
+    return d + ' L' + last.x + ' ' + last.y;
   }
 
-  // Point where the ray from a rectangle's center toward (tx,ty) exits the rectangle.
-  function rectEdgePoint(cx, cy, hw, hh, tx, ty) {
-    const dx = tx - cx, dy = ty - cy;
-    if (dx === 0 && dy === 0) return { x: cx, y: cy };
-    const scale = Math.min(dx !== 0 ? hw / Math.abs(dx) : Infinity, dy !== 0 ? hh / Math.abs(dy) : Infinity);
-    return { x: cx + dx * scale, y: cy + dy * scale };
+  function polylineMid(pts) {
+    let total = 0;
+    for (let i = 1; i < pts.length; i++) total += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    let acc = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const seg = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+      if (acc + seg >= total / 2) {
+        const t = seg ? (total / 2 - acc) / seg : 0;
+        return { x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t };
+      }
+      acc += seg;
+    }
+    return pts[0];
+  }
+
+  function convexHull(points) {
+    const pts = points.slice().sort((a, b) => a.x - b.x || a.y - b.y);
+    if (pts.length < 3) return pts;
+    const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    const lower = [];
+    pts.forEach((p) => {
+      while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+      lower.push(p);
+    });
+    const upper = [];
+    for (let i = pts.length - 1; i >= 0; i--) {
+      const p = pts[i];
+      while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+      upper.push(p);
+    }
+    lower.pop(); upper.pop();
+    return lower.concat(upper);
   }
 
   function Topology(opts) {
     this.viewport = opts.viewport;
     this.world = opts.world;
+    this.groupsLayer = opts.groupsLayer;
+    this.segmentsLayer = opts.segmentsLayer;
+    this.linksBehind = opts.linksBehind;
     this.nodesLayer = opts.nodesLayer;
-    this.linksLayer = opts.linksLayer;
-    this.elevatedLinksLayer = opts.elevatedLinksLayer;
-    this.linkToolbarLayer = opts.linkToolbarLayer;
+    this.linksAbove = opts.linksAbove;
+    this.marqueeEl = opts.marqueeEl;
     this.emptyHint = opts.emptyHint;
     this.getState = opts.getState;
-    this.persist = opts.persist;
-    this.onSelectDevice = opts.onSelectDevice || function () {};
-    this.onDeselectDevice = opts.onDeselectDevice || function () {};
-    this.onChange = opts.onChange || function () {};
+    this.commit = opts.commit;
+    this.touchView = opts.touchView || function () {};
+    this.onSelect = opts.onSelect || function () {};
+    this.onConnect = opts.onConnect || function () {};
+    this.onContext = opts.onContext || function () {};
+    this.onDropNew = opts.onDropNew || function () {};
+    this.getDragType = opts.getDragType || function () { return null; };
+    this.onLayout = opts.onLayout || function () {};
 
+    this.ix = Model.index(this.getState());
     this.nodeEls = {};
-    this.childEls = {};
-    this.childOwner = {};
-    this.selectedLinkId = null;
-    this.selectedDeviceId = null;
+    this.groupEls = {};
+    this.boxes = {};
+    this.geoms = [];
+    this.sel = new Set();
+    this.selLink = null;
+    this.selGroup = null;
+    this.focus = null;
     this.dragCtx = null;
     this.panCtx = null;
+    this.marqueeCtx = null;
     this.connectCtx = null;
     this.replugCtx = null;
+    this._raf = 0;
+    this._hot = new Set();
+    this._justDragged = false;
 
     this._bind();
   }
+
+  Topology.prototype.state = function () { return this.getState(); };
+  Topology.prototype.layer = function () { return this.state().view.layer || 'physical'; };
 
   Topology.prototype._bind = function () {
     const self = this;
     this.viewport.addEventListener('mousedown', (e) => self._onViewportMouseDown(e));
     this.viewport.addEventListener('wheel', (e) => self._onWheel(e), { passive: false });
+    this.viewport.addEventListener('contextmenu', (e) => self._onContextMenu(e));
+    this.viewport.addEventListener('dragover', (e) => self._onDragOver(e));
+    this.viewport.addEventListener('dragleave', (e) => { if (e.target === self.viewport) self._clearDropHover(); });
+    this.viewport.addEventListener('drop', (e) => self._onDrop(e));
+    this.nodesLayer.addEventListener('mousedown', (e) => self._onNodeMouseDown(e));
+    this.nodesLayer.addEventListener('click', (e) => self._onNodeClick(e));
+    this.groupsLayer.addEventListener('mousedown', (e) => self._onGroupMouseDown(e));
+    this.groupsLayer.addEventListener('click', (e) => self._onGroupClick(e));
     window.addEventListener('mousemove', (e) => self._onMouseMove(e));
     window.addEventListener('mouseup', (e) => self._onMouseUp(e));
-    window.addEventListener('keydown', (e) => self._onKeyDown(e));
-    window.addEventListener('resize', () => self.updateLinks());
+    window.addEventListener('resize', () => self._schedule());
+    if (typeof ResizeObserver !== 'undefined') {
+      this.ro = new ResizeObserver(() => self._schedule());
+    }
   };
 
-  Topology.prototype.state = function () { return this.getState(); };
+  // Coalesces layout work (re-measure + redraw links/groups) into one pass per frame.
+  Topology.prototype._schedule = function () {
+    if (this._raf) return;
+    this._raf = requestAnimationFrame(() => {
+      this._raf = 0;
+      this._afterLayout();
+    });
+  };
+
+  // ---------- View transform ----------
 
   Topology.prototype.applyTransform = function () {
     const v = this.state().view;
@@ -99,15 +200,20 @@
     this.viewport.style.backgroundPosition = v.x + 'px ' + v.y + 'px';
     const size = 26 * v.zoom;
     this.viewport.style.backgroundSize = size + 'px ' + size + 'px';
+    this.viewport.dataset.lod = v.zoom < 0.5 ? 'far' : 'near';
+    this.viewport.dataset.layer = this.layer();
   };
 
   Topology.prototype.screenToWorld = function (clientX, clientY) {
     const rect = this.viewport.getBoundingClientRect();
     const v = this.state().view;
-    return {
-      x: (clientX - rect.left - v.x) / v.zoom,
-      y: (clientY - rect.top - v.y) / v.zoom
-    };
+    return { x: (clientX - rect.left - v.x) / v.zoom, y: (clientY - rect.top - v.y) / v.zoom };
+  };
+
+  Topology.prototype.viewCenter = function () {
+    const rect = this.viewport.getBoundingClientRect();
+    const v = this.state().view;
+    return { x: (rect.width / 2 - v.x) / v.zoom, y: (rect.height / 2 - v.y) / v.zoom };
   };
 
   Topology.prototype.zoomAt = function (clientX, clientY, factor) {
@@ -115,11 +221,11 @@
     const v = this.state().view;
     const cx = clientX - rect.left, cy = clientY - rect.top;
     const wx = (cx - v.x) / v.zoom, wy = (cy - v.y) / v.zoom;
-    v.zoom = clamp(v.zoom * factor, 0.25, 2.5);
+    v.zoom = clamp(v.zoom * factor, 0.2, 2.5);
     v.x = cx - wx * v.zoom;
     v.y = cy - wy * v.zoom;
     this.applyTransform();
-    this.persist();
+    this.touchView();
   };
 
   Topology.prototype.zoomBy = function (factor) {
@@ -127,105 +233,55 @@
     this.zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, factor);
   };
 
-  Topology.prototype.resetView = function () {
+  Topology.prototype.fit = function (ids) {
+    const keys = (ids && ids.length ? ids : Object.keys(this.nodeEls)).filter((id) => this.boxes[id]);
+    this.groupsFitKeys(keys, ids);
     const v = this.state().view;
-    v.x = 0; v.y = 0; v.zoom = 1;
-    this.applyTransform();
-    this.persist();
-  };
-
-  Topology.prototype.fitView = function () {
-    const ids = Object.keys(this.nodeEls);
-    if (!ids.length) { this.resetView(); return; }
+    if (!keys.length) { v.x = 0; v.y = 0; v.zoom = 1; this.applyTransform(); this.touchView(); return; }
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    ids.forEach((id) => {
-      const el = this.nodeEls[id];
-      minX = Math.min(minX, el.offsetLeft);
-      minY = Math.min(minY, el.offsetTop);
-      maxX = Math.max(maxX, el.offsetLeft + el.offsetWidth);
-      maxY = Math.max(maxY, el.offsetTop + el.offsetHeight);
+    keys.forEach((id) => {
+      const b = this.boxes[id];
+      minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
+      maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
     });
-    const pad = 70;
-    const bw = (maxX - minX) + pad * 2, bh = (maxY - minY) + pad * 2;
+    const pad = 80;
     const rect = this.viewport.getBoundingClientRect();
-    const v = this.state().view;
-    v.zoom = clamp(Math.min(rect.width / bw, rect.height / bh), 0.2, 1.6);
+    v.zoom = clamp(Math.min(rect.width / (maxX - minX + pad * 2), rect.height / (maxY - minY + pad * 2)), 0.2, 1.4);
     v.x = rect.width / 2 - ((minX + maxX) / 2) * v.zoom;
     v.y = rect.height / 2 - ((minY + maxY) / 2) * v.zoom;
     this.applyTransform();
-    this.persist();
+    this.touchView();
+  };
+
+  // Collapsed-group cards live in the same box table; include them when fitting everything.
+  Topology.prototype.groupsFitKeys = function (keys, ids) {
+    if (ids && ids.length) return;
+    Object.keys(this.boxes).forEach((k) => { if (k.indexOf('g:') === 0 && !keys.includes(k)) keys.push(k); });
+  };
+
+  Topology.prototype.centerOn = function (id) {
+    const top = this.ix.top(id);
+    const key = top && this.boxes[top.id] ? top.id : (top && top.groupId && this.boxes['g:' + top.groupId] ? 'g:' + top.groupId : null);
+    const b = key && this.boxes[key];
+    if (!b) return;
+    const rect = this.viewport.getBoundingClientRect();
+    const v = this.state().view;
+    v.x = rect.width / 2 - (b.x + b.w / 2) * v.zoom;
+    v.y = rect.height / 2 - (b.y + b.h / 2) * v.zoom;
+    this.applyTransform();
+    this.touchView();
   };
 
   Topology.prototype._onWheel = function (e) {
     e.preventDefault();
     if (e.ctrlKey || e.metaKey) {
-      const factor = Math.pow(1.0015, -e.deltaY);
-      this.zoomAt(e.clientX, e.clientY, factor);
+      this.zoomAt(e.clientX, e.clientY, Math.pow(1.0015, -e.deltaY));
     } else {
       const v = this.state().view;
       v.x -= e.deltaX;
       v.y -= e.deltaY;
       this.applyTransform();
-      this.persist();
-    }
-  };
-
-  Topology.prototype._onViewportMouseDown = function (e) {
-    if (e.button !== 0) return;
-    if (e.target !== this.viewport && e.target !== this.world && e.target !== this.linksLayer) return;
-    this.deselectLink();
-    if (this.selectedDeviceId) {
-      this.setSelectedDevice(null);
-      this.onDeselectDevice();
-    }
-    this.panCtx = { startX: e.clientX, startY: e.clientY, origin: { x: this.state().view.x, y: this.state().view.y } };
-  };
-
-  Topology.prototype._onMouseMove = function (e) {
-    if (this.panCtx) {
-      const v = this.state().view;
-      v.x = this.panCtx.origin.x + (e.clientX - this.panCtx.startX);
-      v.y = this.panCtx.origin.y + (e.clientY - this.panCtx.startY);
-      this.applyTransform();
-    } else if (this.dragCtx) {
-      const w = this.screenToWorld(e.clientX, e.clientY);
-      const d = this.dragCtx;
-      d.moved = true;
-      const device = d.device;
-      device.x = Math.round(w.x - d.offsetX);
-      device.y = Math.round(w.y - d.offsetY);
-      d.el.style.left = device.x + 'px';
-      d.el.style.top = device.y + 'px';
-      this.updateLinks();
-    } else if (this.connectCtx) {
-      const w = this.screenToWorld(e.clientX, e.clientY);
-      this.connectCtx.line.setAttribute('x2', w.x);
-      this.connectCtx.line.setAttribute('y2', w.y);
-      this._updateConnectHover(this.connectCtx, e.clientX, e.clientY);
-    } else if (this.replugCtx) {
-      const w = this.screenToWorld(e.clientX, e.clientY);
-      this.replugCtx.line.setAttribute('x2', w.x);
-      this.replugCtx.line.setAttribute('y2', w.y);
-      this._updateConnectHover(this.replugCtx, e.clientX, e.clientY);
-    }
-  };
-
-  Topology.prototype._onMouseUp = function (e) {
-    if (this.panCtx) { this.panCtx = null; this.persist(); }
-    if (this.dragCtx) {
-      if (this.dragCtx.moved) this.persist();
-      else this.onSelectDevice(this.dragCtx.device.id);
-      this.dragCtx = null;
-    }
-    if (this.connectCtx) this._finishConnect(e);
-    if (this.replugCtx) this._finishReplug(e);
-  };
-
-  Topology.prototype._onKeyDown = function (e) {
-    if (e.key === 'Escape') {
-      if (this.connectCtx) this._cancelConnect();
-      if (this.replugCtx) this._cancelReplug();
-      this.deselectLink();
+      this.touchView();
     }
   };
 
@@ -233,527 +289,881 @@
 
   Topology.prototype.render = function () {
     const state = this.state();
+    this.ix = Model.index(state);
+    if (this.ro) this.ro.disconnect();
     this.nodesLayer.innerHTML = '';
     this.nodeEls = {};
-    this.childEls = {};
-    this.childOwner = {};
-    if (this.emptyHint) this.emptyHint.hidden = state.devices.length > 0;
-    state.devices.forEach((d) => this._renderNode(d));
-    this.updateLinks();
+    this.groupEls = {};
+    this.boxes = {};
+    const collapsed = new Set(state.groups.filter((g) => g.collapsed).map((g) => g.id));
+    state.nodes.forEach((n) => {
+      if (!this.ix.isTop(n.id)) return;
+      if (n.groupId && collapsed.has(n.groupId)) return;
+      this._mountTop(n);
+    });
+    state.groups.forEach((g) => { if (g.collapsed) this._mountGroupCard(g); });
+    if (this.emptyHint) this.emptyHint.hidden = state.nodes.length > 0;
+    this.sel.forEach((id) => { if (!this.nodeEls[id]) this.sel.delete(id); });
+    if (this.selLink && !state.links.some((l) => l.id === this.selLink)) this.selLink = null;
+    if (this.selGroup && !state.groups.some((g) => g.id === this.selGroup)) this.selGroup = null;
     this.applyTransform();
+    this._afterLayout();
   };
 
-  Topology.prototype._renderNode = function (d) {
-    const vpnGradient = vpnRing(this.state(), d);
-    const vpnClass = vpnGradient ? ' has-vpn' : '';
-    const vpnIps = vpnIpLabelsHtml(this.state(), d);
-    const meta = DEVICE_TYPES[d.type] || DEVICE_TYPES.host;
-    const el = document.createElement('div');
-    el.dataset.id = d.id;
-    el.style.left = d.x + 'px';
-    el.style.top = d.y + 'px';
-
-    if (d.type === 'isp') {
-      // ISP nodes are deliberately not a card like other devices: just the
-      // word "ISP", or a custom logo image the user uploads, with no background.
-      el.className = 'node node-isp' + vpnClass + (vpnIps ? ' has-vpn-ips' : '') + (d.id === this.selectedDeviceId ? ' selected' : '');
-      const body = d.ispImage
-        ? '<img class="node-isp-image" src="' + UI.escapeHtml(d.ispImage) + '" alt="' + UI.escapeHtml(d.name || 'ISP') + '"/>'
-        : '<span class="node-isp-label">ISP</span>';
-      el.innerHTML = body + (vpnIps ? '<div class="vpn-ip-labels">' + vpnIps + '</div>' : '') + anchorDotsHtml();
-    } else {
-      el.className = 'node type-' + meta.group + ' device-' + d.type + vpnClass + (vpnIps ? ' has-vpn-ips' : '') + (d.id === this.selectedDeviceId ? ' selected' : '');
-
-      // VMs/containers render as full nodes nested inside this one — same card
-      // look as a top-level device, colored icon and panel button included —
-      // and, like any other node, can be dragged-from to create their own
-      // connections (their own cable, not the host's).
-      const childrenHtml = (d.children || []).map((c) => {
-        const cm = CHILD_TYPES[c.type] || CHILD_TYPES.vm;
-        const childVpn = vpnRing(this.state(), c);
-        const childVpnClass = childVpn ? ' has-vpn' : '';
-        const childVpnIps = vpnIpLabelsHtml(this.state(), c);
-        const roleColor = c.role ? UI.colorForText(c.role) : null;
-        return '<div class="node-child type-' + cm.group + childVpnClass + (childVpnIps ? ' has-vpn-ips' : '') + '" data-role="child-row" data-child-id="' + c.id + (childVpn ? '" style="--vpn-ring:' + childVpn : '') + '">' +
-          '<div class="node-child-head">' +
-            '<span class="node-child-icon">' + Icons.svg(cm.icon, 15) + '</span>' +
-            '<div class="node-child-title">' +
-              '<span class="node-child-name">' + UI.escapeHtml(c.name) + '</span>' +
-              '<span class="node-child-type">' + cm.label + (c.os ? ' &middot; ' + UI.escapeHtml(c.os) : '') + '</span>' +
-            '</div>' +
-          '</div>' +
-          (c.role ? '<div class="node-child-chips">' +
-            '<span class="chip role-chip" style="color:' + roleColor + ';border-color:' + roleColor + ';background:' + roleColor + '1a">' + UI.escapeHtml(c.role) + '</span>' +
-          '</div>' : '') +
-          (c.configUrl ? '<div class="node-foot">' +
-            '<button type="button" class="panel-badge" data-role="open-panel" data-url="' + UI.escapeHtml(c.configUrl) + '" title="Abrir panel en una pestaña nueva">' + Icons.svg('externalLink', 11) + 'Panel</button>' +
-          '</div>' : '') +
-          (childVpnIps ? '<div class="vpn-ip-labels">' + childVpnIps + '</div>' : '') +
-          anchorDotsHtml() +
-        '</div>';
-      }).join('');
-
-      const roleColor = d.role ? UI.colorForText(d.role) : null;
-      el.innerHTML =
-        '<div class="node-head">' +
-          '<span class="node-icon">' + Icons.svg(meta.icon, 18) + '</span>' +
-          '<div class="node-title">' +
-            '<span class="node-name">' + UI.escapeHtml(d.name) + '</span>' +
-            '<span class="node-type">' + meta.label + (d.os ? ' &middot; ' + UI.escapeHtml(d.os) : '') + '</span>' +
-          '</div>' +
-        '</div>' +
-        (d.role ? '<div class="node-chips">' +
-          '<span class="chip role-chip" style="color:' + roleColor + ';border-color:' + roleColor + ';background:' + roleColor + '1a">' + UI.escapeHtml(d.role) + '</span>' +
-        '</div>' : '') +
-        (childrenHtml ? '<div class="node-children">' + childrenHtml + '</div>' : '') +
-        (d.configUrl ? '<div class="node-foot">' +
-          '<button type="button" class="panel-badge" data-role="open-panel" data-url="' + UI.escapeHtml(d.configUrl) + '" title="Abrir panel en una pestaña nueva">' + Icons.svg('externalLink', 11) + 'Panel</button>' +
-        '</div>' : '') +
-        (vpnIps ? '<div class="vpn-ip-labels">' + vpnIps + '</div>' : '') +
-        anchorDotsHtml();
-    }
-
-    if (vpnGradient) el.style.setProperty('--vpn-ring', vpnGradient);
-
-    this._bindNodeEvents(el, d);
+  Topology.prototype._mountTop = function (n) {
+    const el = this._buildNode(n, 0);
+    el.style.left = n.x + 'px';
+    el.style.top = n.y + 'px';
     this.nodesLayer.appendChild(el);
-    this.nodeEls[d.id] = el;
+    if (this.ro) this.ro.observe(el);
+    return el;
+  };
 
-    el.querySelectorAll('[data-role="child-row"]').forEach((childEl) => {
-      const cid = childEl.dataset.childId;
-      this.childEls[cid] = childEl;
-      this.childOwner[cid] = d.id;
-    });
+  Topology.prototype._buildNode = function (n, depth) {
+    const state = this.state();
+    const layer = this.layer();
+    const meta = Model.typeMeta(n.type);
+    const kids = this.ix.children(n.id);
+    const ips = Model.nodeIps(n);
+    const overlays = Model.overlaysOfNode(state, n);
+    const nets = Model.networksOfNode(state, n);
+    const urls = Model.nodeUrls(n);
+    const ring = ringStyle(overlays);
+    const isIsp = n.type === 'isp' && depth === 0;
+    const el = document.createElement('div');
+    el.dataset.nodeId = n.id;
+    if (depth === 0) el.dataset.top = '1';
+    this.nodeEls[n.id] = el;
 
-    if (d.type === 'isp' && d.ispImage) {
-      // The image has no intrinsic size until it loads; once it does, the
-      // node's box changes size, so links need to re-anchor to its real edge.
-      const self = this;
+    const overlayIps = (n.interfaces || []).filter((i) => i.kind === 'tunnel' && i.overlayId && (i.ip || i.mode === 'dhcp')).map((i) => {
+      const o = state.overlays.find((x) => x.id === i.overlayId);
+      return o ? '<span class="vpn-ip" style="color:' + o.color + '" title="' + esc(o.name) + '">' + esc(i.ip || 'DHCP') + '</span>' : '';
+    }).join('');
+    const overlayHtml = overlayIps ? '<div class="vpn-ip-labels">' + overlayIps + '</div>' : '';
+    const dots = SIDES.map((s) => '<button type="button" class="anchor-dot anchor-dot--' + s + '" data-side="' + s + '" title="Arrastra para crear una conexión" tabindex="-1"></button>').join('');
+    const cls = (ring ? ' has-vpn' : '') + (overlayIps ? ' has-vpn-ips' : '');
+
+    if (isIsp) {
+      el.className = 'node node-isp' + cls;
+      el.innerHTML = (n.ispImage
+        ? '<img class="node-isp-image" src="' + esc(n.ispImage) + '" alt="' + esc(n.name || 'ISP') + '"/>'
+        : '<span class="node-isp-label" title="' + esc(n.name) + '">ISP</span>') + overlayHtml + dots;
+      if (ring) el.style.setProperty('--vpn-ring', ring);
+      return el;
+    }
+
+    el.className = (depth === 0 ? 'node' : 'node-child') + ' type-' + meta.group + ' device-' + n.type + cls;
+    if (ring) el.style.setProperty('--vpn-ring', ring);
+
+    const roleColor = n.role ? UI.colorForText(n.role) : null;
+    const chips = (n.role ? '<span class="chip role-chip" style="color:' + roleColor + ';border-color:' + roleColor + ';background:' + roleColor + '1a">' + esc(n.role) + '</span>' : '') +
+      n.tags.slice(0, 3).map((t) => '<span class="chip tag-chip">' + esc(t) + '</span>').join('') +
+      (n.tags.length > 3 ? '<span class="chip tag-chip">+' + (n.tags.length - 3) + '</span>' : '');
+
+    const ipHtml = ips.length
+      ? '<div class="node-ips">' + ips.slice(0, 3).map((i) => '<span class="ip-pill' + (i.dhcp ? ' dhcp' : '') + '" title="' + esc(i.iface.name || '') + '">' + esc(i.text) + '</span>').join('') +
+        (ips.length > 3 ? '<span class="ip-pill more" title="' + esc(ips.slice(3).map((i) => i.text).join(', ')) + '">+' + (ips.length - 3) + '</span>' : '') + '</div>'
+      : '';
+
+    const netHtml = layer === 'logical' && nets.length
+      ? '<div class="node-nets">' + nets.map((x) => '<span class="net-badge" style="--c:' + x.color + '">' + esc(x.name) + '</span>').join('') + '</div>'
+      : '';
+
+    let svcHtml = '';
+    if (layer === 'services') {
+      svcHtml = n.services.length
+        ? '<div class="node-services">' + n.services.slice(0, 6).map((s) => {
+            const u = Model.serviceUrl(s);
+            return '<div class="svc-row' + (u ? ' has-url' : '') + '"' + (u ? ' data-act="open" data-url="' + esc(u) + '" title="' + esc(u) + '"' : '') + '>' +
+              '<span class="svc-name">' + esc(s.name || 'Servicio') + '</span>' + (s.port ? '<span class="svc-port">' + esc(s.port) + '</span>' : '') +
+              (u ? Icons.svg('externalLink', 11) : '') + '</div>';
+          }).join('') + (n.services.length > 6 ? '<div class="svc-more">+' + (n.services.length - 6) + ' más</div>' : '') + '</div>'
+        : '<div class="svc-empty">Sin servicios</div>';
+    }
+
+    let foot = '';
+    if (layer === 'services') {
+      foot = '';  // each service row already opens its own URL
+    } else if (urls.length === 1) {
+      foot = '<button type="button" class="panel-badge" data-act="open" data-url="' + esc(urls[0].url) + '" title="' + esc(urls[0].name + ' - ' + urls[0].url) + '">' + Icons.svg('externalLink', 11) + esc(urls[0].name.length > 14 ? 'Panel' : urls[0].name) + '</button>';
+    } else if (urls.length > 1) {
+      foot = '<button type="button" class="panel-badge" data-act="menu" title="Abrir un panel">' + Icons.svg('externalLink', 11) + 'Paneles (' + urls.length + ')' + Icons.svg('chevronDown', 10) + '</button>';
+    }
+
+    const toggle = kids.length
+      ? '<button type="button" class="node-toggle" data-act="toggle" title="' + (n.collapsed ? 'Expandir' : 'Colapsar') + ' contenido">' + Icons.svg(n.collapsed ? 'chevronRight' : 'chevronDown', 13) + '</button>'
+      : '';
+
+    el.innerHTML =
+      '<div class="node-head">' +
+        '<span class="node-icon">' + Icons.svg(meta.icon, depth === 0 ? 18 : 15) + '</span>' +
+        '<div class="node-title"><span class="node-name">' + esc(n.name || meta.label) + '</span>' +
+        '<span class="node-type">' + esc(meta.label) + (n.os ? ' &middot; ' + esc(n.os) : '') + '</span></div>' + toggle +
+      '</div>' + ipHtml + (chips ? '<div class="node-chips">' + chips + '</div>' : '') + netHtml + svcHtml +
+      (kids.length ? (n.collapsed
+        ? '<button type="button" class="node-collapsed" data-act="toggle">' + Icons.svg('chevronRight', 12) + kids.length + (kids.length === 1 ? ' elemento' : ' elementos') + '</button>'
+        : '<div class="node-children"></div>') : '') +
+      (foot ? '<div class="node-foot">' + foot + '</div>' : '') + overlayHtml + dots;
+
+    const holder = el.querySelector(':scope > .node-children');
+    if (holder) kids.forEach((k) => holder.appendChild(this._buildNode(k, depth + 1)));
+
+    if (n.type === 'isp' && n.ispImage) {
       const img = el.querySelector('.node-isp-image');
-      if (img) img.addEventListener('load', () => self.updateLinks(), { once: true });
+      if (img) img.addEventListener('load', () => this._schedule(), { once: true });
+    }
+    return el;
+  };
+
+  Topology.prototype._mountGroupCard = function (g) {
+    const members = this.state().nodes.filter((n) => n.groupId === g.id);
+    const el = document.createElement('div');
+    el.className = 'node group-card';
+    el.dataset.groupCard = g.id;
+    el.style.left = g.x + 'px';
+    el.style.top = g.y + 'px';
+    el.style.setProperty('--gc', g.color);
+    const icons = members.slice(0, 8).map((m) => '<span class="gc-icon" title="' + esc(m.name) + '">' + Icons.svg(Model.typeMeta(m.type).icon, 12) + '</span>').join('');
+    el.innerHTML = '<div class="node-head"><span class="node-icon">' + Icons.svg('group', 18) + '</span>' +
+      '<div class="node-title"><span class="node-name">' + esc(g.name) + '</span><span class="node-type">Grupo &middot; ' + members.length + (members.length === 1 ? ' nodo' : ' nodos') + '</span></div>' +
+      '<button type="button" class="node-toggle" data-act="group-expand" title="Expandir grupo">' + Icons.svg('chevronRight', 13) + '</button></div>' +
+      '<div class="gc-icons">' + icons + (members.length > 8 ? '<span class="gc-more">+' + (members.length - 8) + '</span>' : '') + '</div>';
+    this.nodesLayer.appendChild(el);
+    this.groupEls['card:' + g.id] = el;
+    if (this.ro) this.ro.observe(el);
+  };
+
+  // Re-renders the top-level card that contains `id` (and everything nested in it).
+  Topology.prototype.refreshNode = function (id) {
+    const state = this.state();
+    this.ix = Model.index(state);
+    const top = this.ix.top(id);
+    if (!top) { this.render(); return; }
+    const old = this.nodeEls[top.id];
+    if (!old) { this.render(); return; }
+    [top].concat(this.ix.descendants(top.id)).forEach((n) => { delete this.nodeEls[n.id]; });
+    if (this.ro) this.ro.unobserve(old);
+    const fresh = this._buildNode(top, 0);
+    fresh.style.left = top.x + 'px';
+    fresh.style.top = top.y + 'px';
+    old.replaceWith(fresh);
+    if (this.ro) this.ro.observe(fresh);
+    this._afterLayout();
+  };
+
+  Topology.prototype._afterLayout = function () {
+    this.measure();
+    this._applyClasses();
+    this.updateGroups();
+    this.updateSegments();
+    this.updateLinks();
+    this.onLayout();
+  };
+
+  Topology.prototype.measure = function () {
+    const z = this.state().view.zoom || 1;
+    const w = this.world.getBoundingClientRect();
+    this.boxes = {};
+    Object.keys(this.nodeEls).forEach((id) => {
+      const el = this.nodeEls[id];
+      if (!el.isConnected) return;
+      const r = el.getBoundingClientRect();
+      this.boxes[id] = { x: (r.left - w.left) / z, y: (r.top - w.top) / z, w: r.width / z, h: r.height / z, top: (this.ix.top(id) || {}).id };
+    });
+    Object.keys(this.groupEls).forEach((k) => {
+      if (k.indexOf('card:') !== 0) return;
+      const r = this.groupEls[k].getBoundingClientRect();
+      const gid = k.slice(5);
+      this.boxes['g:' + gid] = { x: (r.left - w.left) / z, y: (r.top - w.top) / z, w: r.width / z, h: r.height / z, top: 'g:' + gid };
+    });
+  };
+
+  // ---------- Selection ----------
+
+  Topology.prototype.getSelection = function () { return Array.from(this.sel); };
+
+  Topology.prototype._emitSelect = function () {
+    this.onSelect({ nodes: this.getSelection(), linkId: this.selLink, groupId: this.selGroup });
+  };
+
+  Topology.prototype.setSelection = function (ids, quiet) {
+    this.sel = new Set((ids || []).filter((id) => this.nodeEls[id]));
+    this.selLink = null;
+    this.selGroup = null;
+    this._applyClasses();
+    this.updateLinks();
+    this.updateGroups();
+    if (!quiet) this._emitSelect();
+  };
+
+  Topology.prototype.selectLink = function (id) {
+    this.sel = new Set();
+    this.selGroup = null;
+    this.selLink = id;
+    this._applyClasses();
+    this.updateLinks();
+    this.updateGroups();
+    this._emitSelect();
+  };
+
+  Topology.prototype.selectGroup = function (id) {
+    this.sel = new Set();
+    this.selLink = null;
+    this.selGroup = id;
+    this._applyClasses();
+    this.updateLinks();
+    this.updateGroups();
+    this._emitSelect();
+  };
+
+  Topology.prototype.clearSelection = function () {
+    if (!this.sel.size && !this.selLink && !this.selGroup) return;
+    this.setSelection([]);
+  };
+
+  Topology.prototype.selectAll = function () {
+    this.setSelection(this.state().nodes.filter((n) => this.ix.isTop(n.id) && this.nodeEls[n.id]).map((n) => n.id));
+  };
+
+  Topology.prototype.setFocus = function (focus) {
+    this.focus = focus;
+    this._applyClasses();
+    this.updateSegments();
+  };
+
+  Topology.prototype._nodeMatchesLayer = function (n) {
+    const state = this.state();
+    const layer = this.layer();
+    if (layer === 'logical') {
+      if (!this.focus || this.focus.kind !== 'network') return true;
+      return Model.networksOfNode(state, n).some((x) => x.id === this.focus.id);
+    }
+    if (layer === 'overlay') {
+      const ovs = Model.overlaysOfNode(state, n);
+      if (this.focus && this.focus.kind === 'overlay') return ovs.some((o) => o.id === this.focus.id);
+      return ovs.length > 0;
+    }
+    if (layer === 'services') return n.services.length > 0;
+    return true;
+  };
+
+  Topology.prototype._applyClasses = function () {
+    const state = this.state();
+    const layer = this.layer();
+    this.viewport.dataset.layer = layer;
+    const connected = new Set();
+    if (this.sel.size) {
+      const ids = new Set();
+      this.sel.forEach((id) => { ids.add(id); this.ix.descendants(id).forEach((d) => ids.add(d.id)); });
+      state.links.forEach((l) => { if (ids.has(l.a.nodeId) || ids.has(l.b.nodeId)) connected.add(l.id); });
+    }
+    this._hot = connected;
+    Object.keys(this.nodeEls).forEach((id) => {
+      const el = this.nodeEls[id];
+      const n = this.ix.get(id);
+      el.classList.toggle('selected', this.sel.has(id));
+      let dim = false;
+      if (n && layer !== 'physical') {
+        const subtree = [n].concat(this.ix.descendants(id));
+        dim = !subtree.some((x) => this._nodeMatchesLayer(x));
+      }
+      el.classList.toggle('dim', dim);
+    });
+    Object.keys(this.groupEls).forEach((k) => {
+      if (k.indexOf('card:') === 0) this.groupEls[k].classList.toggle('selected', this.selGroup === k.slice(5));
+    });
+  };
+
+  // ---------- Mouse: viewport (pan / marquee) ----------
+
+  Topology.prototype._onViewportMouseDown = function (e) {
+    if (e.button !== 0) return;
+    if (e.shiftKey) {
+      const w = this.screenToWorld(e.clientX, e.clientY);
+      this.marqueeCtx = { x0: w.x, y0: w.y, base: new Set(this.sel) };
+      return;
+    }
+    this.panCtx = { startX: e.clientX, startY: e.clientY, origin: { x: this.state().view.x, y: this.state().view.y }, moved: false };
+  };
+
+  Topology.prototype._onMouseMove = function (e) {
+    if (this.panCtx) {
+      const c = this.panCtx;
+      if (!c.moved && Math.hypot(e.clientX - c.startX, e.clientY - c.startY) < DRAG_THRESHOLD) return;
+      c.moved = true;
+      const v = this.state().view;
+      v.x = c.origin.x + (e.clientX - c.startX);
+      v.y = c.origin.y + (e.clientY - c.startY);
+      this.applyTransform();
+    } else if (this.marqueeCtx) {
+      this._updateMarquee(e);
+    } else if (this.dragCtx) {
+      this._updateDrag(e);
+    } else if (this.connectCtx || this.replugCtx) {
+      const ctx = this.connectCtx || this.replugCtx;
+      const w = this.screenToWorld(e.clientX, e.clientY);
+      ctx.line.setAttribute('x2', w.x);
+      ctx.line.setAttribute('y2', w.y);
+      this._updateConnectHover(ctx, e.clientX, e.clientY);
     }
   };
 
-  Topology.prototype._bindNodeEvents = function (el, d) {
-    const self = this;
-    el.addEventListener('mousedown', (e) => {
-      if (e.button !== 0) return;
-      const dot = e.target.closest('[data-role="anchor-dot"]');
-      if (dot) {
-        e.stopPropagation();
-        const childRow = dot.closest('[data-role="child-row"]');
-        const source = childRow ? (d.children || []).find((c) => c.id === childRow.dataset.childId) : d;
-        if (source) self._startConnect(source, e, dot.dataset.side);
-        return;
-      }
-      if (e.target.closest('[data-role="open-panel"]')) {
-        e.stopPropagation();
-        return;
-      }
-      const childRow = e.target.closest('[data-role="child-row"]');
-      if (childRow) {
-        e.stopPropagation();
-        self.deselectLink();
-        self.onSelectDevice(d.id, childRow.dataset.childId);
-        return;
-      }
-      e.stopPropagation();
-      self.deselectLink();
-      const w = self.screenToWorld(e.clientX, e.clientY);
-      self.dragCtx = { device: d, el, offsetX: w.x - d.x, offsetY: w.y - d.y, moved: false };
+  Topology.prototype._onMouseUp = function (e) {
+    if (this.panCtx) {
+      const moved = this.panCtx.moved;
+      this.panCtx = null;
+      if (moved) this.touchView(); else this.clearSelection();
+    }
+    if (this.marqueeCtx) this._finishMarquee();
+    if (this.dragCtx) this._finishDrag(e);
+    if (this.connectCtx) this._finishConnect(e);
+    if (this.replugCtx) this._finishReplug(e);
+  };
+
+  Topology.prototype._updateMarquee = function (e) {
+    const c = this.marqueeCtx;
+    const w = this.screenToWorld(e.clientX, e.clientY);
+    const x = Math.min(c.x0, w.x), y = Math.min(c.y0, w.y), x2 = Math.max(c.x0, w.x), y2 = Math.max(c.y0, w.y);
+    c.rect = { x, y, x2, y2 };
+    const v = this.state().view;
+    const m = this.marqueeEl;
+    m.hidden = false;
+    m.style.left = (x * v.zoom + v.x) + 'px';
+    m.style.top = (y * v.zoom + v.y) + 'px';
+    m.style.width = ((x2 - x) * v.zoom) + 'px';
+    m.style.height = ((y2 - y) * v.zoom) + 'px';
+  };
+
+  Topology.prototype._finishMarquee = function () {
+    const c = this.marqueeCtx;
+    this.marqueeCtx = null;
+    this.marqueeEl.hidden = true;
+    if (!c.rect) return;
+    const ids = new Set(c.base);
+    this.state().nodes.forEach((n) => {
+      if (!this.ix.isTop(n.id)) return;
+      const b = this.boxes[n.id];
+      if (b && b.x < c.rect.x2 && b.x + b.w > c.rect.x && b.y < c.rect.y2 && b.y + b.h > c.rect.y) ids.add(n.id);
     });
-    el.querySelectorAll('[data-role="open-panel"]').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        window.open(btn.dataset.url, '_blank', 'noopener');
-      });
+    this.setSelection(Array.from(ids));
+  };
+
+  Topology.prototype._onContextMenu = function (e) {
+    e.preventDefault();
+    const nodeEl = e.target.closest('[data-node-id]');
+    const linkEl = e.target.closest('.link-g');
+    const groupEl = e.target.closest('[data-group-id]') || e.target.closest('[data-group-card]');
+    const w = this.screenToWorld(e.clientX, e.clientY);
+    this.onContext({
+      clientX: e.clientX, clientY: e.clientY, world: w,
+      nodeId: nodeEl ? nodeEl.dataset.nodeId : null,
+      linkId: linkEl ? linkEl.dataset.id : null,
+      groupId: groupEl ? (groupEl.dataset.groupId || groupEl.dataset.groupCard) : null
     });
   };
 
-  Topology.prototype.refreshNodeCard = function (deviceId) {
-    const state = this.state();
-    const d = state.devices.find((x) => x.id === deviceId);
-    if (!d) return;
-    Object.keys(this.childOwner).forEach((cid) => {
-      if (this.childOwner[cid] === deviceId) {
-        delete this.childOwner[cid];
-        delete this.childEls[cid];
+  // ---------- Mouse: nodes ----------
+
+  Topology.prototype._onNodeMouseDown = function (e) {
+    if (e.button !== 0) return;
+    if (e.target.closest('[data-act]')) { e.stopPropagation(); return; }
+    const dot = e.target.closest('.anchor-dot');
+    if (dot) {
+      e.stopPropagation();
+      const owner = dot.closest('[data-node-id]');
+      if (owner) this._startConnect(owner.dataset.nodeId, dot.dataset.side, e);
+      return;
+    }
+    const card = e.target.closest('[data-group-card]');
+    if (card) {
+      e.stopPropagation();
+      const g = this.state().groups.find((x) => x.id === card.dataset.groupCard);
+      if (g) this._startGroupDrag(g, e, true);
+      return;
+    }
+    const nodeEl = e.target.closest('[data-node-id]');
+    if (!nodeEl) return;
+    e.stopPropagation();
+    const id = nodeEl.dataset.nodeId;
+    const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+
+    if (!this.ix.isTop(id)) {
+      // Nested nodes are placed by their host's layout: they can be selected but not dragged.
+      if (additive) {
+        const next = new Set(this.sel);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        this.setSelection(Array.from(next));
+      } else {
+        this.setSelection([id]);
       }
+      return;
+    }
+
+    let pendingToggle = false;
+    if (additive) {
+      if (this.sel.has(id)) pendingToggle = true;
+      else this.setSelection(Array.from(this.sel).concat(id), true);
+    } else if (!this.sel.has(id)) {
+      this.setSelection([id], true);
+    }
+    this.dragCtx = { kind: 'nodes', id, startX: e.clientX, startY: e.clientY, moved: false, pendingToggle, additive, wasMulti: this.sel.size > 1 };
+  };
+
+  Topology.prototype._startGroupDrag = function (g, e, collapsed) {
+    this.dragCtx = { kind: 'group', group: g, collapsed, startX: e.clientX, startY: e.clientY, moved: false };
+  };
+
+  Topology.prototype._beginMove = function (ids) {
+    const state = this.state();
+    const moving = new Set(ids);
+    this.dragCtx.moving = moving;
+    this.dragCtx.starts = {};
+    state.nodes.forEach((n) => { if (moving.has(n.id)) this.dragCtx.starts[n.id] = { x: n.x, y: n.y }; });
+    this.dragCtx.startBoxes = {};
+    Object.keys(this.boxes).forEach((k) => { const b = this.boxes[k]; this.dragCtx.startBoxes[k] = { x: b.x, y: b.y }; });
+  };
+
+  Topology.prototype._updateDrag = function (e) {
+    const c = this.dragCtx;
+    if (!c.moved) {
+      if (Math.hypot(e.clientX - c.startX, e.clientY - c.startY) < DRAG_THRESHOLD) return;
+      c.moved = true;
+      if (c.kind === 'nodes') {
+        this._beginMove(Array.from(this.sel).filter((id) => this.ix.isTop(id)));
+      } else {
+        this._beginMove(this.state().nodes.filter((n) => n.groupId === c.group.id).map((n) => n.id));
+        if (c.collapsed) c.groupStart = { x: c.group.x, y: c.group.y };
+      }
+    }
+    const z = this.state().view.zoom;
+    let dx = (e.clientX - c.startX) / z, dy = (e.clientY - c.startY) / z;
+    if (this.state().view.snap && !e.altKey) {
+      // Snap the grabbed node (or the group's first member) and keep everyone else at the same offset.
+      const refId = c.kind === 'nodes' ? c.id : Array.from(c.moving)[0];
+      const s = c.starts[refId];
+      if (s) { dx = snap(s.x + dx) - s.x; dy = snap(s.y + dy) - s.y; }
+      else if (c.groupStart) { dx = snap(c.groupStart.x + dx) - c.groupStart.x; dy = snap(c.groupStart.y + dy) - c.groupStart.y; }
+    }
+    c.dx = dx; c.dy = dy;
+    const state = this.state();
+    state.nodes.forEach((n) => {
+      const s = c.starts[n.id];
+      if (!s) return;
+      n.x = s.x + dx; n.y = s.y + dy;
+      const el = this.nodeEls[n.id];
+      if (el) { el.style.left = n.x + 'px'; el.style.top = n.y + 'px'; }
     });
-    const old = this.nodeEls[deviceId];
-    if (old) old.remove();
-    this._renderNode(d);
+    if (c.groupStart) {
+      c.group.x = c.groupStart.x + dx; c.group.y = c.groupStart.y + dy;
+      const el = this.groupEls['card:' + c.group.id];
+      if (el) { el.style.left = c.group.x + 'px'; el.style.top = c.group.y + 'px'; }
+    }
+    Object.keys(this.boxes).forEach((k) => {
+      const b = this.boxes[k];
+      const sb = c.startBoxes[k];
+      if ((c.moving.has(b.top)) || (c.groupStart && b.top === 'g:' + c.group.id)) { b.x = sb.x + dx; b.y = sb.y + dy; }
+    });
+    this.updateGroups();
+    this.updateSegments();
     this.updateLinks();
   };
 
-  Topology.prototype.setSelectedDevice = function (id) {
-    if (this.selectedDeviceId && this.nodeEls[this.selectedDeviceId]) {
-      this.nodeEls[this.selectedDeviceId].classList.remove('selected');
+  Topology.prototype._finishDrag = function (e) {
+    const c = this.dragCtx;
+    this.dragCtx = null;
+    if (c.moved) {
+      // the click that follows a drag must not also select the group header that was dragged
+      this._justDragged = true;
+      setTimeout(() => { this._justDragged = false; }, 0);
+      this.commit('move');
+      return;
     }
-    this.selectedDeviceId = id;
-    if (id && this.nodeEls[id]) this.nodeEls[id].classList.add('selected');
+    if (c.kind === 'group') {
+      if (c.collapsed) this.selectGroup(c.group.id);
+      return;
+    }
+    if (c.pendingToggle) {
+      const next = new Set(this.sel);
+      next.delete(c.id);
+      this.setSelection(Array.from(next));
+    } else if (c.additive || c.wasMulti) {
+      this.setSelection(c.additive ? Array.from(this.sel) : [c.id]);
+    } else {
+      this._emitSelect();
+    }
+  };
+
+  Topology.prototype._onNodeClick = function (e) {
+    const act = e.target.closest('[data-act]');
+    if (!act) return;
+    e.stopPropagation();
+    const nodeEl = act.closest('[data-node-id]');
+    const kind = act.dataset.act;
+    if (kind === 'open') {
+      window.open(act.dataset.url, '_blank', 'noopener');
+    } else if (kind === 'menu' && nodeEl) {
+      const n = this.ix.get(nodeEl.dataset.nodeId);
+      if (!n) return;
+      const r = act.getBoundingClientRect();
+      UI.showMenuAt(r.left, r.bottom + 4, [{ header: 'Abrir panel' }].concat(Model.nodeUrls(n).map((u) => ({
+        label: u.name, hint: u.url.replace(/^https?:\/\//, '').slice(0, 28), icon: 'externalLink',
+        onClick: () => window.open(u.url, '_blank', 'noopener')
+      }))));
+    } else if (kind === 'toggle' && nodeEl) {
+      const n = this.ix.get(nodeEl.dataset.nodeId);
+      if (!n) return;
+      n.collapsed = !n.collapsed;
+      this.commit('collapse');
+      this.refreshNode(n.id);
+    } else if (kind === 'group-expand') {
+      const card = act.closest('[data-group-card]');
+      if (card) this.setGroupCollapsed(card.dataset.groupCard, false);
+    }
+  };
+
+  // ---------- Groups ----------
+
+  Topology.prototype._onGroupMouseDown = function (e) {
+    if (e.button !== 0) return;
+    const head = e.target.closest('.group-head');
+    if (!head) return;
+    e.stopPropagation();
+    if (e.target.closest('[data-act]')) return;
+    const g = this.state().groups.find((x) => x.id === head.dataset.groupId);
+    if (g) this._startGroupDrag(g, e, false);
+  };
+
+  Topology.prototype._onGroupClick = function (e) {
+    const act = e.target.closest('[data-act="group-collapse"]');
+    if (act) {
+      e.stopPropagation();
+      this.setGroupCollapsed(act.closest('.group-head').dataset.groupId, true);
+      return;
+    }
+    const head = e.target.closest('.group-head');
+    if (head && !this._justDragged) this.selectGroup(head.dataset.groupId);
+  };
+
+  Topology.prototype.setGroupCollapsed = function (gid, collapsed) {
+    const g = this.state().groups.find((x) => x.id === gid);
+    if (!g) return;
+    if (collapsed) {
+      const members = this.state().nodes.filter((n) => n.groupId === gid && this.boxes[n.id]);
+      if (members.length) {
+        const xs = members.map((n) => this.boxes[n.id]);
+        const minX = Math.min.apply(null, xs.map((b) => b.x)), maxX = Math.max.apply(null, xs.map((b) => b.x + b.w));
+        const minY = Math.min.apply(null, xs.map((b) => b.y)), maxY = Math.max.apply(null, xs.map((b) => b.y + b.h));
+        g.x = Math.round((minX + maxX) / 2 - GROUP_CARD_W / 2);
+        g.y = Math.round((minY + maxY) / 2 - 30);
+      }
+    }
+    g.collapsed = collapsed;
+    this.commit('group-collapse');
+    this.sel = new Set();
+    this.render();
+    this._emitSelect();
+  };
+
+  Topology.prototype.updateGroups = function () {
+    this.groupsLayer.innerHTML = '';
+    this.groupBounds = {};
+    const state = this.state();
+    state.groups.forEach((g) => {
+      if (g.collapsed) return;
+      const members = state.nodes.filter((n) => n.groupId === g.id && this.boxes[n.id]);
+      if (!members.length) return;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      members.forEach((n) => {
+        const b = this.boxes[n.id];
+        minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
+        maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
+      });
+      const x = minX - GROUP_PAD, y = minY - GROUP_PAD - GROUP_HEAD, w = maxX - minX + GROUP_PAD * 2, h = maxY - minY + GROUP_PAD * 2 + GROUP_HEAD;
+      this.groupBounds[g.id] = { x, y, w, h };
+      const box = document.createElement('div');
+      box.className = 'group-box' + (this.selGroup === g.id ? ' selected' : '');
+      box.dataset.groupId = g.id;
+      box.style.cssText = 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;--gc:' + g.color;
+      box.innerHTML = '<div class="group-head" data-group-id="' + esc(g.id) + '">' +
+        '<span class="group-dot"></span><span class="group-name">' + esc(g.name) + '</span>' +
+        '<span class="group-count">' + members.length + '</span>' +
+        '<button type="button" class="group-btn" data-act="group-collapse" title="Colapsar grupo">' + Icons.svg('chevronUp', 12) + '</button></div>';
+      this.groupsLayer.appendChild(box);
+    });
+  };
+
+  // ---------- Logical / overlay layers: convex hulls around members ----------
+
+  Topology.prototype.updateSegments = function () {
+    const layer = this.layer();
+    const el = this.segmentsLayer;
+    el.innerHTML = '';
+    if (layer !== 'logical' && layer !== 'overlay') return;
+    const state = this.state();
+    const defs = layer === 'logical' ? state.networks : state.overlays;
+    defs.forEach((def) => {
+      const pts = [];
+      state.nodes.forEach((n) => {
+        const member = layer === 'logical'
+          ? Model.networksOfNode(state, n).some((x) => x.id === def.id)
+          : Model.overlaysOfNode(state, n).some((x) => x.id === def.id);
+        if (!member) return;
+        const b = this.visibleBox(n.id);
+        if (!b) return;
+        pts.push({ x: b.x, y: b.y }, { x: b.x + b.w, y: b.y }, { x: b.x, y: b.y + b.h }, { x: b.x + b.w, y: b.y + b.h });
+      });
+      if (!pts.length) return;
+      const focused = this.focus && this.focus.id === def.id;
+      const faded = this.focus && !focused;
+      const hull = convexHull(pts);
+      const poly = svgEl('polygon', { points: hull.map((p) => p.x + ',' + p.y).join(' '), style: '--c:' + def.color }, 'segment' + (layer === 'overlay' ? ' overlay' : '') + (faded ? ' faded' : '') + (focused ? ' focused' : ''));
+      el.appendChild(poly);
+      const minY = Math.min.apply(null, hull.map((p) => p.y)), minX = Math.min.apply(null, hull.map((p) => p.x));
+      const label = svgEl('text', { x: minX - 14, y: minY - 30, style: '--c:' + def.color }, 'segment-label' + (faded ? ' faded' : ''));
+      label.textContent = def.name + (def.cidr && def.cidr !== def.name ? '  ' + def.cidr : '');
+      el.appendChild(label);
+    });
   };
 
   // ---------- Links ----------
 
-  function pairKey(link) { return [link.a.deviceId, link.b.deviceId].slice().sort().join('::'); }
-
-  // World-space box for anything a link can attach to: a top-level device, or
-  // a VM/container nested inside one (whose own offsetLeft/Top are relative to
-  // its parent card, not the world, so they need the owner's position added in).
-  Topology.prototype._entityBox = function (id) {
-    const el = this.nodeEls[id];
-    if (el) return { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight, el, nested: false };
-    const childEl = this.childEls[id];
-    if (!childEl) return null;
-    const owner = this.state().devices.find((d) => d.id === this.childOwner[id]);
-    if (!owner) return null;
-    return { x: owner.x + childEl.offsetLeft, y: owner.y + childEl.offsetTop, w: childEl.offsetWidth, h: childEl.offsetHeight, el: childEl, nested: true };
-  };
-
-  // A fixed point on one of the node's four edges (top/right/bottom/left),
-  // chosen by the user for a given interface instead of the automatic anchor.
-  // hw/hh of 0 make rectEdgePoint collapse straight onto that exact point.
-  Topology.prototype._sideAnchor = function (box, side) {
-    const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
-    if (side === 'top') return { cx, cy: box.y, hw: 0, hh: 0 };
-    if (side === 'bottom') return { cx, cy: box.y + box.h, hw: 0, hh: 0 };
-    if (side === 'left') return { cx: box.x, cy, hw: 0, hh: 0 };
-    if (side === 'right') return { cx: box.x + box.w, cy, hw: 0, hh: 0 };
+  // Where a link end actually lands: the node itself if drawn, else its nearest drawn ancestor
+  // (collapsed host), else the collapsed-group card it belongs to.
+  Topology.prototype.visibleBox = function (id) {
+    let n = this.ix.get(id), guard = 0;
+    while (n && guard++ < 64) {
+      if (this.boxes[n.id]) return this.boxes[n.id];
+      if (n.parentId) { n = this.ix.get(n.parentId); continue; }
+      if (n.groupId && this.boxes['g:' + n.groupId]) return this.boxes['g:' + n.groupId];
+      return null;
+    }
     return null;
   };
 
-  // The interface used for one end of a link may have a user-fixed side.
-  Topology.prototype._endpointSide = function (endpoint) {
-    const found = findEntity(this.state(), endpoint.deviceId);
-    const iface = found && (found.entity.interfaces || []).find((i) => i.id === endpoint.interfaceId);
-    return (iface && iface.side) || null;
+  Topology.prototype._resolveEnd = function (ep) {
+    const node = this.ix.get(ep.nodeId);
+    if (!node) return null;
+    let n = node, guard = 0, key = null, box = null;
+    while (n && guard++ < 64) {
+      if (this.boxes[n.id]) { key = n.id; box = this.boxes[n.id]; break; }
+      if (n.parentId) { n = this.ix.get(n.parentId); continue; }
+      if (n.groupId && this.boxes['g:' + n.groupId]) { key = 'g:' + n.groupId; box = this.boxes[key]; }
+      break;
+    }
+    if (!box) return null;
+    const iface = (node.interfaces || []).find((i) => i.id === ep.ifaceId) || null;
+    const vis = key.indexOf('g:') === 0 ? null : this.ix.get(key);
+    return { key, box, node, iface, nested: !!(vis && vis.parentId), fixed: iface && SIDES.includes(iface.side) ? iface.side : null };
   };
 
-  // The point (+ half-dimensions) a link actually anchors to on this entity.
-  // A user-fixed side always wins. Otherwise it's the box's true center —
-  // except a top-level device that has VMs/containers nested inside: a
-  // sideways-leaving cable anchored at the full card's center would emerge
-  // from wherever that center falls among the children list, tangling with
-  // their own cables. Anchoring it to the header instead keeps the host's own
-  // links up top, clear of its children's.
-  Topology.prototype._renderAnchor = function (box, sideways, side) {
-    if (side) return this._sideAnchor(box, side);
-    const cx = box.x + box.w / 2;
-    if (sideways && !box.nested) {
-      const head = box.el.querySelector('.node-head');
-      const children = box.el.querySelector('.node-children');
-      if (head && children) {
-        return { cx, cy: box.y + head.offsetTop + head.offsetHeight / 2, hw: box.w / 2, hh: head.offsetHeight / 2 + 10 };
+  Topology.prototype._computeLinks = function () {
+    const state = this.state();
+    const style = state.view.linkStyle || 'straight';
+    const geoms = [];
+    state.links.forEach((link) => {
+      const ea = this._resolveEnd(link.a), eb = this._resolveEnd(link.b);
+      if (!ea || !eb || ea.key === eb.key) return;
+      const ca = { x: ea.box.x + ea.box.w / 2, y: ea.box.y + ea.box.h / 2 };
+      const cb = { x: eb.box.x + eb.box.w / 2, y: eb.box.y + eb.box.h / 2 };
+      const dx = cb.x - ca.x, dy = cb.y - ca.y;
+      const horizontal = Math.abs(dx) / ((ea.box.w + eb.box.w) / 2) > Math.abs(dy) / ((ea.box.h + eb.box.h) / 2);
+      const pick = (e, sx, sy, forceH) => e.fixed || (forceH || horizontal ? (sx > 0 ? 'right' : 'left') : (sy > 0 ? 'bottom' : 'top'));
+      const sideA = pick(ea, dx, dy, ea.nested);
+      const sideB = pick(eb, -dx, -dy, eb.nested);
+      geoms.push({ link, ea, eb, sideA, sideB, ca, cb, style });
+    });
+
+    // Several links on the same edge of a node are spread along it (ordered by where they go) instead of overlapping.
+    const slots = new Map();
+    geoms.forEach((g) => {
+      [['A', g.ea, g.sideA, g.cb], ['B', g.eb, g.sideB, g.ca]].forEach(([k, e, side, other]) => {
+        const key = e.key + '|' + side;
+        if (!slots.has(key)) slots.set(key, []);
+        slots.get(key).push({ g, k, e, side, coord: side === 'top' || side === 'bottom' ? other.x : other.y });
+      });
+    });
+    slots.forEach((list) => {
+      list.sort((a, b) => a.coord - b.coord);
+      const n = list.length;
+      const len = list[0].side === 'top' || list[0].side === 'bottom' ? list[0].e.box.w : list[0].e.box.h;
+      const spacing = Math.min(30, (len - 12) / n);
+      list.forEach((s, i) => {
+        const off = (i - (n - 1) / 2) * spacing;
+        s.g['off' + s.k] = off;
+        s.g['spacing' + s.k] = n > 1 ? spacing : 99;
+      });
+    });
+
+    geoms.forEach((g) => {
+      g.pA = pointOnSide(g.ea.box, g.sideA, g.offA || 0);
+      g.pB = pointOnSide(g.eb.box, g.sideB, g.offB || 0);
+      g.dA = DIR[g.sideA]; g.dB = DIR[g.sideB];
+      g.nested = g.ea.nested || g.eb.nested;
+      if (g.style === 'orthogonal') {
+        const pts = orthoPoints(g.pA, g.dA, g.pB, g.dB);
+        g.d = roundedPath(pts, 9);
+        g.mid = polylineMid(pts);
+      } else if (g.style === 'curved') {
+        const dist = Math.hypot(g.pB.x - g.pA.x, g.pB.y - g.pA.y);
+        const k = Math.max(40, dist * 0.4);
+        const c1 = { x: g.pA.x + g.dA.x * k, y: g.pA.y + g.dA.y * k }, c2 = { x: g.pB.x + g.dB.x * k, y: g.pB.y + g.dB.y * k };
+        g.d = 'M' + g.pA.x + ' ' + g.pA.y + ' C' + c1.x + ' ' + c1.y + ' ' + c2.x + ' ' + c2.y + ' ' + g.pB.x + ' ' + g.pB.y;
+        g.mid = { x: (g.pA.x + 3 * c1.x + 3 * c2.x + g.pB.x) / 8, y: (g.pA.y + 3 * c1.y + 3 * c2.y + g.pB.y) / 8 };
+      } else {
+        g.d = 'M' + g.pA.x + ' ' + g.pA.y + ' L' + g.pB.x + ' ' + g.pB.y;
+        g.mid = { x: (g.pA.x + g.pB.x) / 2, y: (g.pA.y + g.pB.y) / 2 };
       }
+    });
+    return geoms;
+  };
+
+  // Text on a link: label, speed, SSID, VLANs - joined in one chip at the middle of the cable.
+  Topology.prototype.linkCaption = function (g) {
+    const l = g.link;
+    const parts = [];
+    if (l.label) parts.push(l.label);
+    if (l.speed) parts.push(l.speed);
+    if (l.medium === 'wifi') {
+      const ssid = l.ssid || (g.ea.iface && g.ea.iface.ssid) || (g.eb.iface && g.eb.iface.ssid);
+      if (ssid) parts.push(ssid);
     }
-    return { cx, cy: box.y + box.h / 2, hw: box.w / 2, hh: box.h / 2 };
+    if (l.vlans) parts.push('VLAN ' + l.vlans);
+    return parts.join(' · ');
   };
 
   Topology.prototype.updateLinks = function () {
     const state = this.state();
-    this.linksLayer.innerHTML = '';
-    this.elevatedLinksLayer.innerHTML = '';
-
-    // Links between the same two devices (e.g. a cable + a wireless backup) are
-    // spread sideways so their lines and labels don't sit exactly on top of each other.
-    const pairGroups = {};
-    state.links.forEach((link) => { (pairGroups[pairKey(link)] = pairGroups[pairKey(link)] || []).push(link); });
-
-    state.links.forEach((link) => {
-      const boxA = this._entityBox(link.a.deviceId);
-      const boxB = this._entityBox(link.b.deviceId);
-      if (!boxA || !boxB) return;
-      // A VM/container is nested inside its host's own card, so a link to/from
-      // one has to be drawn ON TOP of the host (not hidden behind it like a
-      // normal device-to-device cable) to be visible crossing over it at all.
-      if (boxA.nested || boxB.nested) {
-        this._renderElevatedLink(link, boxA, boxB, pairGroups);
-      } else {
-        this._renderOccludedLink(link, boxA, boxB, pairGroups);
-      }
-    });
-    this._positionLinkToolbar(pairGroups);
-  };
-
-  // Normal device-to-device cable: drawn center-to-center on a layer BEHIND the
-  // nodes, so the opaque card fronts naturally hide everything but the segment
-  // between them — no explicit edge-clipping needed for the line itself.
-  Topology.prototype._renderOccludedLink = function (link, boxA, boxB, pairGroups) {
-    const self = this;
-    const trueAx = boxA.x + boxA.w / 2, trueAy = boxA.y + boxA.h / 2;
-    const trueBx = boxB.x + boxB.w / 2, trueBy = boxB.y + boxB.h / 2;
-    const sideways = Math.abs(trueBx - trueAx) > Math.abs(trueBy - trueAy);
-
-    const anchorA = this._renderAnchor(boxA, sideways, this._endpointSide(link.a));
-    const anchorB = this._renderAnchor(boxB, sideways, this._endpointSide(link.b));
-    const off = this._parallelOffset(link, pairGroups, anchorA.cx, anchorA.cy, anchorB.cx, anchorB.cy);
-    const ax2 = anchorA.cx + off.x, ay2 = anchorA.cy + off.y;
-    const bx2 = anchorB.cx + off.x, by2 = anchorB.cy + off.y;
-
-    const line = document.createElementNS(SVG_NS, 'line');
-    line.setAttribute('x1', ax2); line.setAttribute('y1', ay2);
-    line.setAttribute('x2', bx2); line.setAttribute('y2', by2);
-    line.setAttribute('class', 'link-line' + (link.wireless ? ' wireless' : '') + (link.id === this.selectedLinkId ? ' selected' : ''));
-    const hit = document.createElementNS(SVG_NS, 'line');
-    hit.setAttribute('x1', ax2); hit.setAttribute('y1', ay2);
-    hit.setAttribute('x2', bx2); hit.setAttribute('y2', by2);
-    hit.setAttribute('class', 'link-hit');
-    hit.addEventListener('click', (e) => { e.stopPropagation(); self.selectLink(link.id); });
-    hit.addEventListener('mousedown', (e) => e.stopPropagation());
-    this.linksLayer.appendChild(line);
-    this.linksLayer.appendChild(hit);
-
-    const totalLen = Math.hypot(bx2 - ax2, by2 - ay2) || 1;
-    this._renderEndpointTags(link.a, anchorA, anchorB.cx, anchorB.cy, totalLen, off.x, off.y, this.linksLayer);
-    this._renderEndpointTags(link.b, anchorB, anchorA.cx, anchorA.cy, totalLen, off.x, off.y, this.linksLayer);
-
-    if (link.id === this.selectedLinkId) {
-      // The raw anchor can sit deep inside the card (occlusion hides that, not
-      // clipping) — handles need the actual visible edge point instead.
-      const edgeA = rectEdgePoint(anchorA.cx, anchorA.cy, anchorA.hw, anchorA.hh, bx2, by2);
-      const edgeB = rectEdgePoint(anchorB.cx, anchorB.cy, anchorB.hw, anchorB.hh, ax2, ay2);
-      this._renderLinkHandles(link, edgeA.x, edgeA.y, edgeB.x, edgeB.y);
+    this.linksBehind.innerHTML = '';
+    this.linksAbove.innerHTML = '';
+    this.geoms = this._computeLinks();
+    this.geoms.forEach((g) => this._drawLink(g));
+    if (this.selLink) {
+      const g = this.geoms.find((x) => x.link.id === this.selLink);
+      if (g) this._drawHandles(g);
     }
+    void state;
   };
 
-  // A link touching a VM/container: drawn on a layer ABOVE the nodes (dotted,
-  // so it reads as "piercing into" a card rather than a normal cable), with
-  // real edge-clipping on both ends since nothing hides the overlap for it.
-  Topology.prototype._renderElevatedLink = function (link, boxA, boxB, pairGroups) {
+  Topology.prototype._linkColor = function (g) {
+    const l = g.link;
+    if (l.medium === 'tunnel') {
+      const iface = (g.ea.iface && g.ea.iface.overlayId ? g.ea.iface : g.eb.iface);
+      const o = iface && this.state().overlays.find((x) => x.id === iface.overlayId);
+      if (o) return o.color;
+    }
+    return (MEDIA[l.medium] || MEDIA.ethernet).color;
+  };
+
+  Topology.prototype._drawLink = function (g) {
     const self = this;
-    const trueAx = boxA.x + boxA.w / 2, trueAy = boxA.y + boxA.h / 2;
-    const trueBx = boxB.x + boxB.w / 2, trueBy = boxB.y + boxB.h / 2;
-    const off = this._parallelOffset(link, pairGroups, trueAx, trueAy, trueBx, trueBy);
-    const refAx = trueBx + off.x, refAy = trueBy + off.y;
-    const refBx = trueAx + off.x, refBy = trueAy + off.y;
-    const anchorA = this._sideAnchor(boxA, this._endpointSide(link.a)) || { cx: trueAx, cy: trueAy, hw: boxA.w / 2, hh: boxA.h / 2 };
-    const anchorB = this._sideAnchor(boxB, this._endpointSide(link.b)) || { cx: trueBx, cy: trueBy, hw: boxB.w / 2, hh: boxB.h / 2 };
-    const edgeA = rectEdgePoint(anchorA.cx, anchorA.cy, anchorA.hw, anchorA.hh, refAx, refAy);
-    const edgeB = rectEdgePoint(anchorB.cx, anchorB.cy, anchorB.hw, anchorB.hh, refBx, refBy);
-    const ax2 = edgeA.x + off.x, ay2 = edgeA.y + off.y;
-    const bx2 = edgeB.x + off.x, by2 = edgeB.y + off.y;
-
-    const line = document.createElementNS(SVG_NS, 'line');
-    line.setAttribute('x1', ax2); line.setAttribute('y1', ay2);
-    line.setAttribute('x2', bx2); line.setAttribute('y2', by2);
-    line.setAttribute('class', 'link-line child-link' + (link.id === this.selectedLinkId ? ' selected' : ''));
-    const hit = document.createElementNS(SVG_NS, 'line');
-    hit.setAttribute('x1', ax2); hit.setAttribute('y1', ay2);
-    hit.setAttribute('x2', bx2); hit.setAttribute('y2', by2);
-    hit.setAttribute('class', 'link-hit');
+    const link = g.link;
+    const layer = g.nested ? this.linksAbove : this.linksBehind;
+    const dense = Math.min(g.spacingA || 99, g.spacingB || 99) < 24;
+    const cls = 'link-g m-' + link.medium + (link.id === this.selLink ? ' selected' : '') + (this._hot.has(link.id) ? ' hot' : '') +
+      (g.nested ? ' nested' : '') + (dense ? ' dense' : '');
+    const gEl = svgEl('g', { 'data-id': link.id }, cls);
+    const color = this._linkColor(g);
+    const path = svgEl('path', { d: g.d, style: 'stroke:' + color }, 'link-line');
+    const hit = svgEl('path', { d: g.d }, 'link-hit');
+    hit.addEventListener('mousedown', (e) => { if (e.button === 0) { e.stopPropagation(); } });
     hit.addEventListener('click', (e) => { e.stopPropagation(); self.selectLink(link.id); });
-    hit.addEventListener('mousedown', (e) => e.stopPropagation());
-    this.elevatedLinksLayer.appendChild(line);
-    this.elevatedLinksLayer.appendChild(hit);
+    gEl.appendChild(path);
+    gEl.appendChild(hit);
 
-    const totalLen = Math.hypot(bx2 - ax2, by2 - ay2) || 1;
-    this._renderEndpointTags(link.a, anchorA, refAx, refAy, totalLen, off.x, off.y, this.elevatedLinksLayer, boxA.nested);
-    this._renderEndpointTags(link.b, anchorB, refBx, refBy, totalLen, off.x, off.y, this.elevatedLinksLayer, boxB.nested);
+    const caption = this.linkCaption(g);
+    if (caption) {
+      const t = svgEl('text', { x: g.mid.x, y: g.mid.y, 'text-anchor': 'middle', 'dominant-baseline': 'central' }, 'link-caption');
+      t.textContent = caption;
+      gEl.appendChild(t);
+      layer.appendChild(gEl);
+      const bb = t.getBBox();
+      const bg = svgEl('rect', { x: bb.x - 5, y: bb.y - 2, width: bb.width + 10, height: bb.height + 4, rx: 4 }, 'link-caption-bg');
+      gEl.insertBefore(bg, t);
+    } else {
+      layer.appendChild(gEl);
+    }
 
-    if (link.id === this.selectedLinkId) this._renderLinkHandles(link, ax2, ay2, bx2, by2);
+    [['A', g.ea, g.pA, g.dA], ['B', g.eb, g.pB, g.dB]].forEach(([, e, p, d]) => this._drawTags(gEl, e, p, d));
   };
 
-  // Sideways offset (perpendicular to the A-B direction) so parallel links fan out.
-  Topology.prototype._parallelOffset = function (link, pairGroups, ax, ay, bx, by) {
-    const group = pairGroups[pairKey(link)];
-    const idx = group.indexOf(link);
-    const spacing = 16;
-    const offset = (idx - (group.length - 1) / 2) * spacing;
-    if (!offset) return { x: 0, y: 0 };
-    const dx = bx - ax, dy = by - ay;
-    const len = Math.hypot(dx, dy) || 1;
-    return { x: (-dy / len) * offset, y: (dx / len) * offset };
-  };
-
-  // Labels one end of a link like a traditional network diagram: the interface
-  // name right at the device edge, and its IP a bit further out along the cable —
-  // both as bare text (no boxes). When the cable leaves a side (not top/bottom),
-  // the name is nudged above the line and the IP below it — further out, clear of
-  // the node — so neither sits on the cable or on top of each other; top/bottom
-  // exits don't need that since both labels already sit along the cable itself.
-  Topology.prototype._renderEndpointTags = function (endpoint, anchor, otherX, otherY, totalLen, offX, offY, layer, nested) {
-    const found = findEntity(this.state(), endpoint.deviceId);
-    const entity = found && found.entity;
-    const iface = entity && (entity.interfaces || []).find((i) => i.id === endpoint.interfaceId);
+  // Interface name and IP right next to where the cable leaves the node, like a classic network diagram.
+  Topology.prototype._drawTags = function (gEl, e, p, d) {
+    const iface = e.iface;
     if (!iface) return;
-    const edge = rectEdgePoint(anchor.cx, anchor.cy, anchor.hw, anchor.hh, otherX, otherY);
-    const baseX = edge.x + offX, baseY = edge.y + offY;
-    const dx = otherX - anchor.cx, dy = otherY - anchor.cy;
-    const len = Math.hypot(dx, dy) || 1;
-    const ux = dx / len, uy = dy / len;
-    const sideways = Math.abs(ux) > Math.abs(uy);
-    const maxOut = totalLen * 0.4;
-    // A VM/container's edge sits flush with its host's own card, so the usual
-    // out-distance only reaches the card border — a centered label still bleeds
-    // half its width back over the host. Nested endpoints get extra clearance
-    // so the whole tag lands clear of the host card, not just its anchor point.
-    const nestedPad = nested ? 28 : 0;
-
-    // ISP nodes don't carry an interface-name label — only the IP, if set.
-    // Sideways exits need a much bigger along-cable distance too, not just a
-    // vertical nudge: a short label centered too close to the edge still
-    // overlaps the node's own border with its near half.
-    if (entity.type !== 'isp') {
-      const nameOut = Math.min(sideways ? 20 : 8, maxOut) + nestedPad;
-      const namePos = this._tagPosition(baseX, baseY, ux, uy, nameOut, sideways ? -13 : 0);
-      this._createLinkText(iface.name, 'iface-tag', namePos.x, namePos.y, layer);
-    }
-
-    if (iface.ip) {
-      const ipOut = Math.min(sideways ? 40 : 26, maxOut) + nestedPad;
-      const ipPos = this._tagPosition(baseX, baseY, ux, uy, ipOut, sideways ? 13 : 0);
-      this._createLinkText(iface.ip, 'ip-tag', ipPos.x, ipPos.y, layer);
+    const ipText = Model.addrText(iface);
+    const isIsp = e.node.type === 'isp';
+    const name = isIsp ? '' : iface.name;
+    if (!name && !ipText) return;
+    const mk = (text, cls, x, y, anchor) => {
+      const t = svgEl('text', { x, y, 'text-anchor': anchor, 'dominant-baseline': 'central' }, 'link-tag ' + cls);
+      t.textContent = text;
+      gEl.appendChild(t);
+    };
+    if (d.x !== 0) {
+      const anchor = d.x > 0 ? 'start' : 'end';
+      const x = p.x + d.x * 7;
+      if (name) mk(name, 'iface-tag', x, p.y - 8, anchor);
+      if (ipText) mk(ipText, 'ip-tag', x, p.y + 8, anchor);
+    } else {
+      const y1 = p.y + d.y * 10, y2 = p.y + d.y * 22;
+      if (name) mk(name, 'iface-tag', p.x + 6, y1, 'start');
+      if (ipText) mk(ipText, 'ip-tag', p.x + 6, name ? y2 : y1, 'start');
     }
   };
 
-  Topology.prototype._tagPosition = function (baseX, baseY, ux, uy, out, perpY) {
-    const x = baseX + ux * out, y = baseY + uy * out;
-    return perpY ? { x, y: y + perpY } : { x, y };
-  };
-
-  Topology.prototype._createLinkText = function (text, cls, x, y, layer) {
-    const t = document.createElementNS(SVG_NS, 'text');
-    t.setAttribute('class', 'link-tag ' + cls);
-    t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('dominant-baseline', 'central');
-    t.setAttribute('x', x);
-    t.setAttribute('y', y);
-    t.textContent = text;
-    (layer || this.linksLayer).appendChild(t);
-  };
-
-  Topology.prototype.selectLink = function (id) {
-    this.selectedLinkId = id;
-    this.setSelectedDevice(null);
-    this.updateLinks();
-  };
-
-  Topology.prototype.deselectLink = function () {
-    if (!this.selectedLinkId) return;
-    this.selectedLinkId = null;
-    this.updateLinks();
-  };
-
-  Topology.prototype._positionLinkToolbar = function (pairGroups) {
-    this.linkToolbarLayer.innerHTML = '';
-    if (!this.selectedLinkId) return;
-    const state = this.state();
-    const link = state.links.find((l) => l.id === this.selectedLinkId);
-    if (!link) { this.selectedLinkId = null; return; }
-    const boxA = this._entityBox(link.a.deviceId), boxB = this._entityBox(link.b.deviceId);
-    if (!boxA || !boxB) return;
-    const v = state.view;
-    const rect = this.viewport.getBoundingClientRect();
-    const trueAx = boxA.x + boxA.w / 2, trueAy = boxA.y + boxA.h / 2;
-    const trueBx = boxB.x + boxB.w / 2, trueBy = boxB.y + boxB.h / 2;
-    const sideways = Math.abs(trueBx - trueAx) > Math.abs(trueBy - trueAy);
-    const anchorA = this._renderAnchor(boxA, sideways, this._endpointSide(link.a));
-    const anchorB = this._renderAnchor(boxB, sideways, this._endpointSide(link.b));
-    const ax = anchorA.cx, ay = anchorA.cy, bx = anchorB.cx, by = anchorB.cy;
-    const groups = pairGroups || (() => { const g = {}; state.links.forEach((l) => { (g[pairKey(l)] = g[pairKey(l)] || []).push(l); }); return g; })();
-    const off = this._parallelOffset(link, groups, ax, ay, bx, by);
-    const mx = (ax + bx) / 2 + off.x;
-    const my = (ay + by) / 2 + off.y;
-    const sx = rect.left + v.x + mx * v.zoom;
-    const sy = rect.top + v.y + my * v.zoom;
-
-    const bar = document.createElement('div');
-    bar.className = 'link-toolbar';
-    bar.style.left = (sx - rect.left) + 'px';
-    bar.style.top = (sy - rect.top) + 'px';
-    bar.innerHTML =
-      '<input type="text" class="link-label-input" placeholder="Etiqueta (ej. 1 Gbps)" value="' + UI.escapeHtml(link.label || '') + '"/>' +
-      '<button class="icon-btn wl-toggle' + (link.wireless ? ' active' : '') + '" title="Inalámbrica (línea discontinua)">' + Icons.svg('wireless', 14) + '</button>' +
-      '<button class="icon-btn danger del-link" title="Eliminar conexión">' + Icons.svg('trash', 14) + '</button>';
-
+  Topology.prototype._drawHandles = function (g) {
     const self = this;
-    bar.querySelector('.link-label-input').addEventListener('input', (e) => {
-      link.label = e.target.value;
-      self.persist();
-    });
-    bar.addEventListener('mousedown', (e) => e.stopPropagation());
-    bar.querySelector('.wl-toggle').addEventListener('click', () => {
-      link.wireless = !link.wireless;
-      self.persist();
-      self.updateLinks();
-    });
-    bar.querySelector('.del-link').addEventListener('click', () => {
-      UI.confirm({
-        title: 'Eliminar conexión',
-        message: 'Se eliminará esta conexión entre dispositivos. Esta acción no se puede deshacer.',
-        confirmLabel: 'Eliminar', danger: true,
-        onConfirm: () => {
-          state.links = state.links.filter((l) => l.id !== link.id);
-          self.selectedLinkId = null;
-          self.persist();
-          self.updateLinks();
-        }
+    [['a', g.pA], ['b', g.pB]].forEach(([role, p]) => {
+      const c = svgEl('circle', { cx: p.x, cy: p.y, r: 6 }, 'link-handle');
+      c.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        self._startReplug(g.link, role, e);
       });
+      this.linksAbove.appendChild(c);
     });
-    this.linkToolbarLayer.appendChild(bar);
   };
 
   // ---------- Connect (drag from an anchor point) ----------
 
-  // Shared by a brand-new connection and a re-plugged link endpoint: draws the
-  // temp line above everything, and remembers which entity id can't be
-  // targeted (the source itself, or the link's other end) to avoid self-links.
-  Topology.prototype._startDrag = function (excludeId, e) {
-    const w = this.screenToWorld(e.clientX, e.clientY);
-    const line = document.createElementNS(SVG_NS, 'line');
-    line.setAttribute('class', 'link-line drawing');
-    line.setAttribute('x1', w.x); line.setAttribute('y1', w.y);
-    line.setAttribute('x2', w.x); line.setAttribute('y2', w.y);
-    this.elevatedLinksLayer.appendChild(line);
-    return { excludeId, line, hoverEl: null, hoverDot: null };
+  Topology.prototype._startLine = function (fromId, side, e) {
+    const b = this.boxes[fromId];
+    const p = b ? pointOnSide(b, side || 'right', 0) : this.screenToWorld(e.clientX, e.clientY);
+    const line = svgEl('line', { x1: p.x, y1: p.y, x2: p.x, y2: p.y }, 'link-line drawing');
+    this.linksAbove.appendChild(line);
+    return line;
+  };
+
+  Topology.prototype._startConnect = function (sourceId, side, e) {
+    this.selLink = null;
+    this.connectCtx = { sourceId, sourceSide: side, excludeId: sourceId, line: this._startLine(sourceId, side, e), hoverEl: null };
   };
 
   Topology.prototype._clearHover = function (ctx) {
-    if (ctx.hoverDot) ctx.hoverDot.classList.remove('hover-target');
     if (ctx.hoverEl) ctx.hoverEl.classList.remove('connect-target');
+    ctx.hoverEl = null;
+    this.nodesLayer.querySelectorAll('.anchor-dot.hover-target').forEach((d) => d.classList.remove('hover-target'));
   };
 
-  // While dragging, reveal the hovered node's four anchor points, and
-  // highlight the exact one under the cursor (only a precise drop on a point
-  // completes the connection — that's the whole point of showing them).
-  Topology.prototype._updateConnectHover = function (ctx, clientX, clientY) {
-    const el = document.elementFromPoint(clientX, clientY);
-    const dot = el && el.closest ? el.closest('[data-role="anchor-dot"]') : null;
-    const nodeEl = el && el.closest ? el.closest('.node, .node-child') : null;
+  Topology.prototype._updateConnectHover = function (ctx, x, y) {
+    const el = document.elementFromPoint(x, y);
     this._clearHover(ctx);
-    const targetId = nodeEl && (nodeEl.dataset.childId || nodeEl.dataset.id);
-    if (nodeEl && targetId !== ctx.excludeId) {
+    const nodeEl = el && el.closest ? el.closest('[data-node-id]') : null;
+    if (nodeEl && nodeEl.dataset.nodeId !== ctx.excludeId) {
       nodeEl.classList.add('connect-target');
       ctx.hoverEl = nodeEl;
-      if (dot) { dot.classList.add('hover-target'); ctx.hoverDot = dot; }
+      const dot = el.closest('.anchor-dot');
+      if (dot) dot.classList.add('hover-target');
     }
   };
 
-  // Resolves a mouseup position to a valid drop: must land exactly on another
-  // node's anchor point (not just anywhere on it, and not on `excludeId`).
-  Topology.prototype._resolveDropTarget = function (e, excludeId) {
+  // A drop counts on any part of another node; landing exactly on an anchor dot also picks the edge.
+  Topology.prototype._resolveDrop = function (e, excludeId) {
     const el = document.elementFromPoint(e.clientX, e.clientY);
-    const dot = el && el.closest ? el.closest('[data-role="anchor-dot"]') : null;
-    if (!dot) return null;
-    const nodeEl = dot.closest('.node, .node-child');
-    const targetId = nodeEl && (nodeEl.dataset.childId || nodeEl.dataset.id);
-    if (!targetId || targetId === excludeId) return null;
-    const found = findEntity(this.state(), targetId);
-    if (!found) return null;
-    return { entity: found.entity, targetId, side: dot.dataset.side };
-  };
-
-  Topology.prototype._startConnect = function (device, e, side) {
-    this.deselectLink();
-    this.connectCtx = Object.assign({ source: device, sourceSide: side }, this._startDrag(device.id, e));
-  };
-
-  Topology.prototype._cancelConnect = function () {
-    if (!this.connectCtx) return;
-    this._clearHover(this.connectCtx);
-    this.connectCtx.line.remove();
-    this.connectCtx = null;
+    const nodeEl = el && el.closest ? el.closest('[data-node-id]') : null;
+    if (!nodeEl || nodeEl.dataset.nodeId === excludeId) return null;
+    const dot = el.closest('.anchor-dot');
+    return { nodeId: nodeEl.dataset.nodeId, side: dot ? dot.dataset.side : '' };
   };
 
   Topology.prototype._finishConnect = function (e) {
@@ -761,23 +1171,17 @@
     this.connectCtx = null;
     ctx.line.remove();
     this._clearHover(ctx);
-    const drop = this._resolveDropTarget(e, ctx.source.id);
+    const drop = this._resolveDrop(e, ctx.sourceId);
     if (!drop) return;
-    this.onChange('open-connect-modal', { source: ctx.source, target: drop.entity, sourceSide: ctx.sourceSide, targetSide: drop.side });
+    this.onConnect({ sourceId: ctx.sourceId, targetId: drop.nodeId, sourceSide: ctx.sourceSide, targetSide: drop.side });
   };
-
-  // ---------- Re-plug (drag an existing link's endpoint handle) ----------
 
   Topology.prototype._startReplug = function (link, role, e) {
     const otherRole = role === 'a' ? 'b' : 'a';
-    this.replugCtx = Object.assign({ link, role }, this._startDrag(link[otherRole].deviceId, e));
-  };
-
-  Topology.prototype._cancelReplug = function () {
-    if (!this.replugCtx) return;
-    this._clearHover(this.replugCtx);
-    this.replugCtx.line.remove();
-    this.replugCtx = null;
+    const otherId = link[otherRole].nodeId;
+    const ownId = link[role].nodeId;
+    const g = this.geoms.find((x) => x.link.id === link.id);
+    this.replugCtx = { link, role, excludeId: otherId, line: this._startLine(ownId, g ? (role === 'a' ? g.sideA : g.sideB) : 'right', e), hoverEl: null };
   };
 
   Topology.prototype._finishReplug = function (e) {
@@ -785,60 +1189,256 @@
     this.replugCtx = null;
     ctx.line.remove();
     this._clearHover(ctx);
-    const drop = this._resolveDropTarget(e, ctx.excludeId);
+    const drop = this._resolveDrop(e, ctx.excludeId);
     if (!drop) { this.updateLinks(); return; }
-
+    const state = this.state();
     const link = ctx.link;
-    const prevDeviceId = link[ctx.role].deviceId;
-    let interfaceId;
-    if (drop.targetId === prevDeviceId) {
-      // Same node, just a different edge — keep using the same interface.
-      interfaceId = link[ctx.role].interfaceId;
+    const target = this.ix.get(drop.nodeId);
+    if (!target) return;
+    let ifaceId;
+    if (drop.nodeId === link[ctx.role].nodeId) {
+      ifaceId = link[ctx.role].ifaceId;
     } else {
-      // A different node: reuse one of its free interfaces, or create one.
       const occupied = new Set();
-      this.state().links.forEach((l) => {
+      state.links.forEach((l) => {
         if (l.id === link.id) return;
-        if (l.a.deviceId === drop.targetId) occupied.add(l.a.interfaceId);
-        if (l.b.deviceId === drop.targetId) occupied.add(l.b.interfaceId);
+        if (l.a.nodeId === target.id) occupied.add(l.a.ifaceId);
+        if (l.b.nodeId === target.id) occupied.add(l.b.ifaceId);
       });
-      const free = (drop.entity.interfaces || []).find((i) => !occupied.has(i.id));
-      if (free) {
-        interfaceId = free.id;
-      } else {
-        const iface = Factory.interface(nextInterfaceName(drop.entity, 'eth'));
-        drop.entity.interfaces = drop.entity.interfaces || [];
-        drop.entity.interfaces.push(iface);
-        interfaceId = iface.id;
+      const free = target.interfaces.find((i) => !occupied.has(i.id));
+      if (free) ifaceId = free.id;
+      else {
+        const i = Factory.iface(NetHub.nextInterfaceName(target, 'eth'));
+        target.interfaces.push(i);
+        ifaceId = i.id;
       }
     }
-    const iface = (drop.entity.interfaces || []).find((i) => i.id === interfaceId);
-    if (iface) iface.side = drop.side;
-    link[ctx.role] = { deviceId: drop.targetId, interfaceId };
-
-    this.persist();
-    this.updateLinks();
+    const iface = target.interfaces.find((i) => i.id === ifaceId);
+    if (iface && drop.side) iface.side = drop.side;
+    link[ctx.role] = { nodeId: drop.nodeId, ifaceId };
+    this.commit('replug');
+    this.refreshNode(target.id);
   };
 
-  // Small draggable circles at a selected link's two ends — grab one and drop
-  // it on any node's anchor point to re-point that end of the connection.
-  Topology.prototype._renderLinkHandles = function (link, ax, ay, bx, by) {
-    const self = this;
-    [['a', ax, ay], ['b', bx, by]].forEach(([role, x, y]) => {
-      const circle = document.createElementNS(SVG_NS, 'circle');
-      circle.setAttribute('cx', x);
-      circle.setAttribute('cy', y);
-      circle.setAttribute('r', 6);
-      circle.setAttribute('class', 'link-handle');
-      circle.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return;
-        e.stopPropagation();
-        self._startReplug(link, role, e);
+  // ---------- Drag & drop from the library ----------
+
+  Topology.prototype._clearDropHover = function () {
+    this.nodesLayer.querySelectorAll('.drop-target').forEach((el) => el.classList.remove('drop-target'));
+  };
+
+  Topology.prototype._onDragOver = function (e) {
+    const type = this.getDragType();
+    if (!type) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    this._clearDropHover();
+    const t = this._dropTarget(e, type);
+    if (t) this.nodeEls[t.id].classList.add('drop-target');
+  };
+
+  Topology.prototype._dropTarget = function (e, type) {
+    if (!NODE_TYPES[type] || !NODE_TYPES[type].virtual) return null;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const nodeEl = el && el.closest ? el.closest('[data-node-id]') : null;
+    const n = nodeEl && this.ix.get(nodeEl.dataset.nodeId);
+    return n && Model.typeMeta(n.type).canHost ? n : null;
+  };
+
+  Topology.prototype._onDrop = function (e) {
+    const type = this.getDragType();
+    if (!type) return;
+    e.preventDefault();
+    this._clearDropHover();
+    const t = this._dropTarget(e, type);
+    this.onDropNew(type, this.screenToWorld(e.clientX, e.clientY), t ? t.id : null);
+  };
+
+  // ---------- Operations on the selection ----------
+
+  Topology.prototype.topSelection = function () {
+    return Array.from(this.sel).filter((id) => this.ix.isTop(id));
+  };
+
+  Topology.prototype.addNode = function (type, pos, parentId) {
+    const state = this.state();
+    const n = Factory.node(type, 0, 0);
+    if (parentId) {
+      n.parentId = parentId;
+    } else {
+      const meta = Model.typeMeta(type);
+      n.x = (this.state().view.snap ? snap : Math.round)(pos.x - 95);
+      n.y = (this.state().view.snap ? snap : Math.round)(pos.y - (meta.virtual ? 30 : 34));
+    }
+    state.nodes.push(n);
+    this.commit('add');
+    if (parentId) {
+      const p = this.ix.get(parentId);
+      if (p && p.collapsed) p.collapsed = false;
+    }
+    this.render();
+    this.setSelection([n.id]);
+    return n;
+  };
+
+  Topology.prototype.deleteSelection = function () {
+    const ids = Array.from(this.sel);
+    if (!ids.length) return 0;
+    const gone = Model.removeNodes(this.state(), ids);
+    this.sel = new Set();
+    this.commit('delete');
+    this.render();
+    this._emitSelect();
+    return gone.size;
+  };
+
+  Topology.prototype.deleteLink = function (id) {
+    const state = this.state();
+    state.links = state.links.filter((l) => l.id !== id);
+    if (this.selLink === id) this.selLink = null;
+    this.commit('delete-link');
+    this.updateLinks();
+    this._emitSelect();
+  };
+
+  Topology.prototype.duplicateSelection = function () {
+    const ids = Array.from(this.sel);
+    if (!ids.length) return [];
+    const state = this.state();
+    // children of a selected host are copied with it, so only copy the topmost selected nodes
+    const topmost = ids.filter((id) => !this.ix.ancestors(id).some((a) => this.sel.has(a.id)));
+    const c = Model.cloneNodes(state, topmost, 52, 52);
+    c.nodes.forEach((n) => state.nodes.push(n));
+    c.links.forEach((l) => state.links.push(l));
+    this.commit('duplicate');
+    this.render();
+    this.setSelection(topmost.map((id) => c.idMap.get(id)));
+    return Array.from(c.idMap.values());
+  };
+
+  // In-memory clipboard shared by every map in this tab.
+  Topology.prototype.copySelection = function () {
+    const ids = Array.from(this.sel);
+    if (!ids.length) return 0;
+    const state = this.state();
+    const topmost = ids.filter((id) => !this.ix.ancestors(id).some((a) => this.sel.has(a.id)));
+    const c = Model.cloneNodes(state, topmost, 0, 0);
+    NetHub.clipboard = { nodes: c.nodes, links: c.links, rootIds: topmost.map((id) => c.idMap.get(id)) };
+    return topmost.length;
+  };
+
+  Topology.prototype.paste = function (at) {
+    const clip = NetHub.clipboard;
+    if (!clip || !clip.nodes.length) return 0;
+    const state = this.state();
+    const pseudo = { nodes: clip.nodes, links: clip.links };
+    const roots = clip.nodes.filter((n) => !n.parentId || !clip.nodes.some((o) => o.id === n.parentId));
+    let minX = Infinity, minY = Infinity;
+    roots.forEach((n) => { if (!n.parentId) { minX = Math.min(minX, n.x); minY = Math.min(minY, n.y); } });
+    if (!isFinite(minX)) { minX = 0; minY = 0; }
+    const target = at || this.viewCenter();
+    const c = Model.cloneNodes(pseudo, roots.map((n) => n.id), target.x - minX - 95, target.y - minY - 34);
+    const netIds = new Set(state.networks.map((n) => n.id)), ovIds = new Set(state.overlays.map((n) => n.id));
+    c.nodes.forEach((n) => {
+      n.groupId = '';
+      n.interfaces.forEach((i) => {
+        if (i.networkId && !netIds.has(i.networkId)) i.networkId = '';
+        if (i.overlayId && !ovIds.has(i.overlayId)) i.overlayId = '';
       });
-      this.elevatedLinksLayer.appendChild(circle);
+      state.nodes.push(n);
     });
+    c.links.forEach((l) => state.links.push(l));
+    this.commit('paste');
+    this.render();
+    this.setSelection(roots.map((n) => c.idMap.get(n.id)));
+    return roots.length;
+  };
+
+  Topology.prototype.nudge = function (dx, dy) {
+    const ids = this.topSelection();
+    if (!ids.length) return;
+    const state = this.state();
+    state.nodes.forEach((n) => { if (ids.includes(n.id)) { n.x += dx; n.y += dy; } });
+    this.commit('nudge');
+    ids.forEach((id) => { const n = this.ix.get(id); if (n && this.nodeEls[id]) { this.nodeEls[id].style.left = n.x + 'px'; this.nodeEls[id].style.top = n.y + 'px'; } });
+    this._afterLayout();
+  };
+
+  Topology.prototype.align = function (mode) {
+    const ids = this.topSelection().filter((id) => this.boxes[id]);
+    if (ids.length < 2) return;
+    const state = this.state();
+    const bs = ids.map((id) => ({ id, b: this.boxes[id] }));
+    const minX = Math.min.apply(null, bs.map((o) => o.b.x)), maxX = Math.max.apply(null, bs.map((o) => o.b.x + o.b.w));
+    const minY = Math.min.apply(null, bs.map((o) => o.b.y)), maxY = Math.max.apply(null, bs.map((o) => o.b.y + o.b.h));
+    bs.forEach(({ id, b }) => {
+      const n = this.ix.get(id);
+      if (mode === 'left') n.x = minX;
+      else if (mode === 'right') n.x = maxX - b.w;
+      else if (mode === 'centerH') n.x = (minX + maxX) / 2 - b.w / 2;
+      else if (mode === 'top') n.y = minY;
+      else if (mode === 'bottom') n.y = maxY - b.h;
+      else if (mode === 'middle') n.y = (minY + maxY) / 2 - b.h / 2;
+      n.x = Math.round(n.x); n.y = Math.round(n.y);
+    });
+    void state;
+    this.commit('align');
+    this.render();
+  };
+
+  Topology.prototype.distribute = function (axis) {
+    const ids = this.topSelection().filter((id) => this.boxes[id]);
+    if (ids.length < 3) return;
+    const horizontal = axis === 'h';
+    const list = ids.map((id) => ({ id, b: this.boxes[id] })).sort((a, b) => (horizontal ? a.b.x - b.b.x : a.b.y - b.b.y));
+    const first = list[0].b, last = list[list.length - 1].b;
+    const total = horizontal ? (last.x + last.w) - first.x : (last.y + last.h) - first.y;
+    const sizes = list.reduce((s, o) => s + (horizontal ? o.b.w : o.b.h), 0);
+    const gap = (total - sizes) / (list.length - 1);
+    let cursor = horizontal ? first.x : first.y;
+    list.forEach((o) => {
+      const n = this.ix.get(o.id);
+      if (horizontal) { n.x = Math.round(cursor); cursor += o.b.w + gap; } else { n.y = Math.round(cursor); cursor += o.b.h + gap; }
+    });
+    this.commit('distribute');
+    this.render();
+  };
+
+  Topology.prototype.groupSelection = function (name) {
+    const ids = this.topSelection();
+    if (!ids.length) return null;
+    const state = this.state();
+    const g = Factory.group(name || 'Grupo', NetHub.PALETTE[state.groups.length % NetHub.PALETTE.length]);
+    state.groups.push(g);
+    state.nodes.forEach((n) => { if (ids.includes(n.id)) n.groupId = g.id; });
+    Model.pruneEmptyGroups(state);
+    this.commit('group');
+    this.render();
+    this.selectGroup(g.id);
+    return g;
+  };
+
+  Topology.prototype.autoLayout = function () {
+    const state = this.state();
+    const sizeOf = (id) => { const b = this.boxes[id] || (this.boxes['g:' + (this.ix.get(id) || {}).groupId]); return b ? { w: b.w, h: b.h } : { w: 190, h: 70 }; };
+    const moved = NetHub.Layout.auto(state, sizeOf);
+    if (!moved) return 0;
+    this.commit('layout');
+    this.render();
+    this.fit();
+    return moved;
+  };
+
+  Topology.prototype.separateOverlaps = function () {
+    const state = this.state();
+    const sizeOf = (id) => { const b = this.boxes[id]; return b ? { w: b.w, h: b.h } : { w: 190, h: 70 }; };
+    const moved = NetHub.Layout.separate(state, sizeOf);
+    if (!moved) return 0;
+    this.commit('layout');
+    this.render();
+    return moved;
   };
 
   global.NetHub = global.NetHub || {};
   global.NetHub.Topology = Topology;
+  global.NetHub.TopologyUtil = { pointOnSide, orthoPoints, roundedPath, convexHull };
 })(window);
