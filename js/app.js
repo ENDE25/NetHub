@@ -9,10 +9,10 @@
 
   const PREFS_KEY = 'nethub_ui_v1';
   const VIEWS = [
-    { id: 'map', label: 'Mapa', icon: 'map' },
-    { id: 'inventory', label: 'Inventario', icon: 'table' },
-    { id: 'networks', label: 'Redes', icon: 'subnet' },
-    { id: 'panels', label: 'Paneles', icon: 'launch' }
+    { id: 'map', label: 'Map', icon: 'map' },
+    { id: 'inventory', label: 'Inventory', icon: 'table' },
+    { id: 'networks', label: 'Networks', icon: 'subnet' },
+    { id: 'panels', label: 'Panels', icon: 'launch' }
   ];
   const QUICK_TYPES = ['router', 'switch', 'firewall', 'ap', 'server', 'host', 'nas', 'camera'];
 
@@ -21,7 +21,7 @@
   let mapDirty = false;
   let dragType = null;
   let issues = [];
-  let saveState = { text: 'Guardado', error: false };
+  let saveState = { text: 'Saved', error: false };
   let warnedStorage = false;
 
   function loadPrefs() {
@@ -31,8 +31,8 @@
   function savePrefs() { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) { /* ignore */ } }
 
   const getState = () => Store.get();
-  const mapName = () => (Store.activeMeta() || {}).name || 'Mapa';
-  const slug = (s) => String(s || 'mapa').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'mapa';
+  const mapName = () => (Store.activeMeta() || {}).name || 'Map';
+  const slug = (s) => String(s || 'map').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'map';
   const today = () => new Date().toISOString().slice(0, 10);
   const modalOpen = () => !!document.querySelector('.modal-overlay.show') || Search.isOpen();
 
@@ -52,8 +52,8 @@
     if (s.nodes.length && s.view.x === 0 && s.view.y === 0 && s.view.zoom === 1) topology.fit();
     if (boot.migrated) { topology.separateOverlaps(); topology.fit(); }
     if (boot.migrated) {
-      UI.toast('Topología migrada al formato nuevo: ' + boot.migrated.nodes + ' nodos' +
-        (boot.migrated.networks ? ' y ' + boot.migrated.networks + ' redes detectadas (revisa las máscaras en Redes)' : '') + '. Tu copia anterior sigue guardada en el navegador.', 'success', { duration: 9000 });
+      UI.toast('Topology migrated to the new format: ' + boot.migrated.nodes + ' nodes' +
+        (boot.migrated.networks ? ' and ' + boot.migrated.networks + ' networks detected (check the masks under Networks)' : '') + '. Your previous copy is still stored in the browser.', 'success', { duration: 9000 });
     }
     const u = Storage.usage();
     if (u.ratio > 0.8) warnStorage(u);
@@ -62,7 +62,7 @@
   function warnStorage(u) {
     if (warnedStorage) return;
     warnedStorage = true;
-    UI.toast('El almacenamiento del navegador está al ' + Math.round(u.ratio * 100) + '%. Exporta una copia y borra versiones antiguas.', 'error', { duration: 9000 });
+    UI.toast('Browser storage is at ' + Math.round(u.ratio * 100) + '%. Export a copy and delete old versions.', 'error', { duration: 9000 });
   }
 
   // ---------- Chrome (top bar, status bar, floating controls) ----------
@@ -73,8 +73,8 @@
     $('btn-undo').innerHTML = Icons.svg('undo', 16);
     $('btn-redo').innerHTML = Icons.svg('redo', 16);
     $('btn-menu').innerHTML = Icons.svg('menu', 18);
-    $('btn-search').innerHTML = Icons.svg('search', 15) + '<span>Buscar</span><kbd>Ctrl K</kbd>';
-    $('btn-validate').innerHTML = Icons.svg('checkCircle', 16) + '<span class="validate-text">Revisión</span><span class="validate-count" hidden></span>';
+    $('btn-search').innerHTML = Icons.svg('search', 15) + '<span>Search</span><kbd>Ctrl K</kbd>';
+    $('btn-validate').innerHTML = Icons.svg('checkCircle', 16) + '<span class="validate-text">Review</span><span class="validate-count" hidden></span>';
     document.querySelector('.empty-hint-icon').innerHTML = Icons.svg('network', 30);
 
     $('view-tabs').innerHTML = VIEWS.map((v) => '<button type="button" class="view-tab" data-view="' + v.id + '">' + Icons.svg(v.icon, 15) + '<span>' + v.label + '</span></button>').join('');
@@ -84,13 +84,13 @@
     $('layer-switch').querySelectorAll('[data-layer]').forEach((b) => b.addEventListener('click', () => setLayer(b.dataset.layer)));
 
     $('zoom-controls').innerHTML =
-      '<button class="icon-btn" data-z="out" title="Alejar">' + Icons.svg('zoomOut', 16) + '</button>' +
-      '<button class="icon-btn" data-z="fit" title="Ajustar a la vista (F)">' + Icons.svg('fit', 16) + '</button>' +
-      '<button class="icon-btn" data-z="in" title="Acercar">' + Icons.svg('zoomIn', 16) + '</button>' +
+      '<button class="icon-btn" data-z="out" title="Zoom out">' + Icons.svg('zoomOut', 16) + '</button>' +
+      '<button class="icon-btn" data-z="fit" title="Fit to view (F)">' + Icons.svg('fit', 16) + '</button>' +
+      '<button class="icon-btn" data-z="in" title="Zoom in">' + Icons.svg('zoomIn', 16) + '</button>' +
       '<span class="float-sep"></span>' +
-      '<button class="icon-btn" data-z="snap" title="Ajustar a la rejilla (Alt mientras arrastras lo desactiva)">' + Icons.svg('magnet', 16) + '</button>' +
-      '<button class="icon-btn" data-z="style" title="Estilo de los cables">' + Icons.svg('ortho', 16) + '</button>' +
-      '<button class="icon-btn" data-z="layout" title="Ordenar automáticamente">' + Icons.svg('wand', 16) + '</button>';
+      '<button class="icon-btn" data-z="snap" title="Snap to grid (hold Alt while dragging to turn it off)">' + Icons.svg('magnet', 16) + '</button>' +
+      '<button class="icon-btn" data-z="style" title="Cable style">' + Icons.svg('ortho', 16) + '</button>' +
+      '<button class="icon-btn" data-z="layout" title="Auto-arrange">' + Icons.svg('wand', 16) + '</button>';
     $('zoom-controls').querySelectorAll('[data-z]').forEach((b) => b.addEventListener('click', () => onZoomControl(b.dataset.z, b)));
 
     // Floating controls sit inside the canvas: their clicks must not start a pan or clear the selection.
@@ -121,9 +121,9 @@
     if (kind === 'in') topology.zoomBy(1.2);
     else if (kind === 'out') topology.zoomBy(1 / 1.2);
     else if (kind === 'fit') topology.fit();
-    else if (kind === 'snap') { s.view.snap = !s.view.snap; Store.touchView(); refreshChrome(); UI.toast(s.view.snap ? 'Ajuste a la rejilla activado.' : 'Ajuste a la rejilla desactivado.', 'info', { duration: 1500 }); }
+    else if (kind === 'snap') { s.view.snap = !s.view.snap; Store.touchView(); refreshChrome(); UI.toast(s.view.snap ? 'Snap to grid on.' : 'Snap to grid off.', 'info', { duration: 1500 }); }
     else if (kind === 'style') {
-      UI.menu(btn, [{ header: 'Estilo de los cables' }].concat(LINK_STYLES.map((st) => ({
+      UI.menu(btn, [{ header: 'Cable style' }].concat(LINK_STYLES.map((st) => ({
         label: st.label, icon: st.icon, checked: s.view.linkStyle === st.id,
         onClick: () => { s.view.linkStyle = st.id; Store.touchView(); topology.updateLinks(); refreshChrome(); }
       }))), { alignRight: true });
@@ -135,12 +135,12 @@
   // Auto layout moves every node, so it asks first (it can still be undone afterwards).
   function confirmAutoLayout() {
     UI.confirm({
-      title: 'Ordenar automáticamente',
-      message: 'Se recolocarán todos los nodos del mapa y se perderá la disposición actual. Podrás deshacerlo con Ctrl+Z.',
-      confirmLabel: 'Ordenar',
+      title: 'Auto-arrange',
+      message: 'All nodes on the map will be repositioned and the current arrangement will be lost. You can undo this with Ctrl+Z.',
+      confirmLabel: 'Arrange',
       onConfirm: () => {
         const moved = topology.autoLayout();
-        UI.toast(moved ? 'Mapa reordenado (' + moved + ' nodos movidos).' : 'No hay nada que reordenar.', moved ? 'success' : 'info', moved ? { action: { label: 'Deshacer', onClick: () => doUndo() } } : undefined);
+        UI.toast(moved ? 'Map rearranged (' + moved + ' nodes moved).' : 'Nothing to rearrange.', moved ? 'success' : 'info', moved ? { action: { label: 'Undo', onClick: () => doUndo() } } : undefined);
       }
     });
   }
@@ -149,18 +149,18 @@
     const s = getState();
     const nets = s.networks.length, ovs = s.overlays.length;
     $('statusbar').innerHTML =
-      '<span class="sb-item">' + s.nodes.length + ' nodos</span><span class="sb-item">' + s.links.length + ' conexiones</span>' +
-      '<span class="sb-item">' + nets + (nets === 1 ? ' red' : ' redes') + (ovs ? ' · ' + ovs + (ovs === 1 ? ' overlay' : ' overlays') : '') + '</span>' +
+      '<span class="sb-item">' + s.nodes.length + ' nodes</span><span class="sb-item">' + s.links.length + ' connections</span>' +
+      '<span class="sb-item">' + nets + (nets === 1 ? ' network' : ' networks') + (ovs ? ' · ' + ovs + (ovs === 1 ? ' overlay' : ' overlays') : '') + '</span>' +
       '<span class="sb-spacer"></span>' +
-      '<span class="sb-item sb-save' + (saveState.error ? ' error' : '') + '" title="' + esc(saveState.error || 'Los datos se guardan en este navegador (localStorage)') + '">' + esc(saveState.error ? 'Sin guardar' : saveState.text) + '</span>' +
-      '<span class="sb-item sb-usage" title="Espacio usado por los mapas. En almacén OPFS no hay límite práctico; en localStorage el tope suele ser ~5 MB">' + usageText() + '</span>';
+      '<span class="sb-item sb-save' + (saveState.error ? ' error' : '') + '" title="' + esc(saveState.error || 'Data is saved in this browser') + '">' + esc(saveState.error ? 'Not saved' : saveState.text) + '</span>' +
+      '<span class="sb-item sb-usage" title="Space used by the maps. OPFS storage has no practical limit; localStorage is usually capped at about 5 MB">' + usageText() + '</span>';
   }
 
   function usageText() {
     const u = Storage.usage();
     if (u.ratio > 0.8) warnStorage(u);
     const size = u.bytes / 1024 < 1000 ? Math.round(u.bytes / 1024) + ' KB' : (u.bytes / 1048576).toFixed(1) + ' MB';
-    return u.backend === 'opfs' ? size + ' · almacén OPFS' : size + ' de ~5 MB';
+    return u.backend === 'opfs' ? size + ' · OPFS storage' : size + ' of ~5 MB';
   }
 
   const validateSoon = UI.debounce(() => {
@@ -171,7 +171,7 @@
     badge.hidden = !total && !c.info;
     badge.textContent = total || c.info;
     badge.className = 'validate-count ' + (c.error ? 'error' : c.warn ? 'warn' : 'info');
-    $('btn-validate').title = issues.length ? c.error + ' errores, ' + c.warn + ' avisos, ' + c.info + ' sugerencias' : 'Sin problemas detectados';
+    $('btn-validate').title = issues.length ? c.error + ' errors, ' + c.warn + ' warnings, ' + c.info + ' suggestions' : 'No problems found';
   }, 250);
 
   function refreshChrome() {
@@ -360,11 +360,11 @@
     if (!topology || count < 2 || !tops.length) { bar.hidden = true; return; }
     const btn = (act, icon, title) => '<button type="button" class="icon-btn" data-act="' + act + '" title="' + title + '"' + '>' + Icons.svg(icon, 16) + '</button>';
     bar.hidden = false;
-    bar.innerHTML = '<span class="sel-count">' + count + ' seleccionados</span><span class="float-sep"></span>' +
-      btn('left', 'alignLeft', 'Alinear a la izquierda') + btn('centerH', 'alignCenterH', 'Centrar horizontalmente') + btn('right', 'alignRight', 'Alinear a la derecha') +
-      btn('top', 'alignTop', 'Alinear arriba') + btn('middle', 'alignMiddle', 'Centrar verticalmente') + btn('bottom', 'alignBottom', 'Alinear abajo') +
-      btn('distH', 'distH', 'Distribuir horizontalmente (3 o más)') + btn('distV', 'distV', 'Distribuir verticalmente (3 o más)') +
-      '<span class="float-sep"></span>' + btn('group', 'group', 'Agrupar (Ctrl+G)') + btn('dup', 'copy', 'Duplicar (Ctrl+D)') + btn('del', 'trash', 'Eliminar (Supr)');
+    bar.innerHTML = '<span class="sel-count">' + count + ' selected</span><span class="float-sep"></span>' +
+      btn('left', 'alignLeft', 'Align left') + btn('centerH', 'alignCenterH', 'Center horizontally') + btn('right', 'alignRight', 'Align right') +
+      btn('top', 'alignTop', 'Align top') + btn('middle', 'alignMiddle', 'Center vertically') + btn('bottom', 'alignBottom', 'Align bottom') +
+      btn('distH', 'distH', 'Distribute horizontally (3 or more)') + btn('distV', 'distV', 'Distribute vertically (3 or more)') +
+      '<span class="float-sep"></span>' + btn('group', 'group', 'Group (Ctrl+G)') + btn('dup', 'copy', 'Duplicate (Ctrl+D)') + btn('del', 'trash', 'Delete (Del)');
     bar.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
       const a = b.dataset.act;
       if (['left', 'centerH', 'right', 'top', 'middle', 'bottom'].includes(a)) topology.align(a);
@@ -393,17 +393,17 @@
     let html = '';
     if (layer === 'logical' || layer === 'overlay') {
       const defs = layer === 'logical' ? s.networks : s.overlays;
-      html = '<div class="lg-title">' + (layer === 'logical' ? 'Redes' : 'Overlays') + '<span class="lg-hint">pulsa para resaltar</span></div>' +
+      html = '<div class="lg-title">' + (layer === 'logical' ? 'Networks' : 'Overlays') + '<span class="lg-hint">click to highlight</span></div>' +
         (defs.length ? defs.map((d) => '<div class="lg-row' + (topology && topology.focus && topology.focus.id === d.id ? ' active' : '') + '" data-id="' + esc(d.id) + '" style="--c:' + d.color + '">' +
           '<button type="button" class="lg-main"><span class="lg-dot"></span><span class="lg-name">' + esc(d.name) + '</span><span class="lg-meta">' + esc(d.cidr && d.cidr !== d.name ? d.cidr : '') + '</span></button>' +
-          '<button type="button" class="icon-btn lg-edit" title="Editar">' + Icons.svg('edit', 12) + '</button></div>').join('')
-          : '<div class="lg-empty">' + (layer === 'logical' ? 'Aún no hay redes. Créalas en la vista Redes.' : 'Aún no hay overlays. Asígnalos desde un nodo.') + '</div>');
-      if (layer === 'logical') html += '<div class="lg-row static"><span class="lg-swatch gateway"></span><span class="lg-name">En varias redes (gateway)</span></div>';
+          '<button type="button" class="icon-btn lg-edit" title="Edit">' + Icons.svg('edit', 12) + '</button></div>').join('')
+          : '<div class="lg-empty">' + (layer === 'logical' ? 'No networks yet. Create them in the Networks view.' : 'No overlays yet. Assign them from a node.') + '</div>');
+      if (layer === 'logical') html += '<div class="lg-row static"><span class="lg-swatch gateway"></span><span class="lg-name">On several networks (gateway)</span></div>';
     } else if (layer === 'physical') {
       const used = Array.from(new Set(s.links.map((l) => l.medium)));
       const lix = Model.index(s);
       const hasNested = s.links.some((l) => { const ix = lix; const x = ix.get(l.a.nodeId), y = ix.get(l.b.nodeId); return (x && x.parentId) || (y && y.parentId); });
-      if (used.length > 1 || hasNested) html = '<div class="lg-title">Cables</div>' + (hasNested ? '<div class="lg-row static"><span class="lg-line nested"></span><span class="lg-name">Dentro de otra máquina</span></div>' : '') + used.map((m) => '<div class="lg-row static"><span class="lg-line m-' + m + '" style="--c:' + (MEDIA[m] || MEDIA.ethernet).color + '"></span><span class="lg-name">' + esc((MEDIA[m] || MEDIA.ethernet).label) + '</span></div>').join('');
+      if (used.length > 1 || hasNested) html = '<div class="lg-title">Cables</div>' + (hasNested ? '<div class="lg-row static"><span class="lg-line nested"></span><span class="lg-name">Inside another machine</span></div>' : '') + used.map((m) => '<div class="lg-row static"><span class="lg-line m-' + m + '" style="--c:' + (MEDIA[m] || MEDIA.ethernet).color + '"></span><span class="lg-name">' + esc((MEDIA[m] || MEDIA.ethernet).label) + '</span></div>').join('');
     }
     lg.hidden = !html;
     lg.innerHTML = html;
@@ -435,12 +435,12 @@
     Store.on('maps', refreshChrome);
     Store.on('commit', () => { updateCounts(); $('btn-undo').disabled = !Store.canUndo(); $('btn-redo').disabled = !Store.canRedo(); validateSoon(); });
     Store.on('status', (s) => {
-      if (s.saving) saveState = { text: 'Guardando...', error: false };
-      else saveState = s.saved ? { text: 'Guardado', error: false } : { text: '', error: s.error };
-      if (s.error) UI.toast(s.error + '. Exporta una copia de seguridad.', 'error', { duration: 8000 });
+      if (s.saving) saveState = { text: 'Saving...', error: false };
+      else saveState = s.saved ? { text: 'Saved', error: false } : { text: '', error: s.error };
+      if (s.error) UI.toast(s.error + '. Export a backup copy.', 'error', { duration: 8000 });
       updateCounts();
     });
-    Store.on('external', () => UI.toast('Este mapa se ha modificado en otra pestaña.', 'info', { duration: 12000, action: { label: 'Recargar', onClick: () => { Store.reloadFromStorage(); } } }));
+    Store.on('external', () => UI.toast('This map was changed in another tab.', 'info', { duration: 12000, action: { label: 'Reload', onClick: () => { Store.reloadFromStorage(); } } }));
   }
 
   function doUndo() { if (Store.undo()) { renderSelectionBar(0); } }
@@ -470,7 +470,7 @@
     topology.setSelection([], true);
     renderSelectionBar(0);
     afterChange({ full: true });
-    UI.toast(names.length === 1 ? '"' + names[0] + '" eliminado' + (released ? ' (los ' + released + ' nodos de dentro se conservan)' : gone.size > 1 ? ' con su contenido' : '') + '.' : gone.size + ' nodos eliminados.', 'success', { action: { label: 'Deshacer', onClick: () => doUndo() } });
+    UI.toast(names.length === 1 ? '"' + names[0] + '" deleted' + (released ? ' (the ' + released + ' nodes inside were kept)' : gone.size > 1 ? ' with its contents' : '') + '.' : gone.size + ' nodes deleted.', 'success', { action: { label: 'Undo', onClick: () => doUndo() } });
   }
 
   // Deleting an (old-style) group only releases its nodes.
@@ -484,7 +484,7 @@
     panel.close();
     topology.setSelection([], true);
     afterChange({ full: true });
-    UI.toast('Grupo eliminado (los nodos se conservan).', 'success', { action: { label: 'Deshacer', onClick: () => doUndo() } });
+    UI.toast('Group deleted (its nodes were kept).', 'success', { action: { label: 'Undo', onClick: () => doUndo() } });
   }
 
   function removeLink(id) {
@@ -494,7 +494,7 @@
     panel.close();
     if (topology) topology.setSelection([], true);
     afterChange({ links: true });
-    UI.toast('Conexión eliminada.', 'success', { action: { label: 'Deshacer', onClick: () => doUndo() } });
+    UI.toast('Connection deleted.', 'success', { action: { label: 'Undo', onClick: () => doUndo() } });
   }
 
   function duplicateNodes(ids) {
@@ -534,10 +534,10 @@
   function buildLibrary() {
     const lib = $('library');
     lib.innerHTML =
-      '<div class="lib-head"><span>Añadir al mapa</span></div>' +
-      '<div class="lib-search">' + Icons.svg('search', 13) + '<input type="text" placeholder="Filtrar tipos..." autocomplete="off"/></div>' +
+      '<div class="lib-head"><span>Add to map</span></div>' +
+      '<div class="lib-search">' + Icons.svg('search', 13) + '<input type="text" placeholder="Filter types..." autocomplete="off"/></div>' +
       '<div class="lib-scroll"></div>' +
-      '<div class="lib-foot">Arrastra al mapa o haz clic. Los tipos <b>Virtual</b> se pueden soltar sobre un nodo para meterlos dentro, y los nodos que queden dentro de un <b>Grupo</b> pertenecen a él.</div>';
+      '<div class="lib-foot">Drag onto the map or click. <b>Virtual</b> types can be dropped onto a node to put them inside it, and any node can be dropped into a <b>Group</b>.</div>';
     const scroll = lib.querySelector('.lib-scroll');
     const input = lib.querySelector('input');
 
@@ -568,7 +568,7 @@
         sec.querySelector('.lib-cat-head').addEventListener('click', () => { prefs.cats[cat.id] = !prefs.cats[cat.id]; savePrefs(); draw(); });
         scroll.appendChild(sec);
       });
-      if (!scroll.children.length) scroll.innerHTML = '<div class="lg-empty">Ningún tipo coincide.</div>';
+      if (!scroll.children.length) scroll.innerHTML = '<div class="lg-empty">No type matches.</div>';
     };
     input.addEventListener('input', draw);
     draw();
@@ -590,41 +590,41 @@
       const urls = Model.nodeUrls(n);
       const ip = (Model.nodeIps(n).find((i) => !i.dhcp) || {}).text;
       if (!multi) {
-        urls.forEach((u) => items.push({ label: 'Abrir ' + u.name, icon: 'externalLink', onClick: () => window.open(u.url, '_blank', 'noopener') }));
+        urls.forEach((u) => items.push({ label: 'Open ' + u.name, icon: 'externalLink', onClick: () => window.open(u.url, '_blank', 'noopener') }));
         if (urls.length) items.push({ separator: true });
-        if (ip) items.push({ label: 'Copiar IP (' + ip + ')', icon: 'copy', onClick: () => UI.copyText(Net.ipText(ip)) });
-        if (!Model.typeMeta(n.type).noIface) items.push({ label: 'Interfaces y servicios...', icon: 'edit', onClick: () => panel.open({ kind: 'node', id: n.id }, 'interfaces') });
-        else items.push({ label: 'Editar...', icon: 'edit', onClick: () => panel.open({ kind: 'node', id: n.id }) });
+        if (ip) items.push({ label: 'Copy IP (' + ip + ')', icon: 'copy', onClick: () => UI.copyText(Net.ipText(ip)) });
+        if (!Model.typeMeta(n.type).noIface) items.push({ label: 'Interfaces and services...', icon: 'edit', onClick: () => panel.open({ kind: 'node', id: n.id }, 'interfaces') });
+        else items.push({ label: 'Edit...', icon: 'edit', onClick: () => panel.open({ kind: 'node', id: n.id }) });
         if (Model.typeMeta(n.type).canHost) {
-          items.push({ separator: true }, { header: 'Añadir dentro' });
+          items.push({ separator: true }, { header: 'Add inside' });
           CHILD_TYPE_IDS.forEach((t) => items.push({ label: NODE_TYPES[t].label, icon: NODE_TYPES[t].icon, onClick: () => { topology.addNode(t, null, n.id); refreshChrome(); } }));
         }
-        if (ix.children(n.id).length) items.push({ label: n.collapsed ? 'Expandir contenido' : 'Colapsar contenido', icon: n.collapsed ? 'chevronDown' : 'chevronRight', onClick: () => { n.collapsed = !n.collapsed; Store.commit('collapse'); topology.refreshNode(n.id); } });
+        if (ix.children(n.id).length) items.push({ label: n.collapsed ? 'Expand contents' : 'Collapse contents', icon: n.collapsed ? 'chevronDown' : 'chevronRight', onClick: () => { n.collapsed = !n.collapsed; Store.commit('collapse'); topology.refreshNode(n.id); } });
         items.push({ separator: true });
       }
-      items.push({ label: multi ? 'Duplicar selección' : 'Duplicar', icon: 'copy', hint: 'Ctrl+D', onClick: () => duplicateNodes(sel) });
-      if (ix.isTop(n.id)) items.push({ label: multi ? 'Agrupar selección' : 'Agrupar', icon: 'group', hint: 'Ctrl+G', onClick: groupSelection });
-      if (!multi && n.groupId) items.push({ label: 'Quitar del grupo', icon: 'group', onClick: () => { n.groupId = ''; Model.pruneEmptyGroups(s); Store.commit('ungroup'); topology.render(); refreshChrome(); } });
-      if (!multi && n.parentId) items.push({ label: 'Sacar al nivel superior', icon: 'chevronUp', onClick: () => { const top = ix.top(n.id); Model.setParent(s, n.id, null, { x: top.x + 60, y: top.y + 60 }); Store.commit('unnest'); topology.render(); refreshChrome(); } });
-      items.push({ separator: true }, { label: multi ? 'Eliminar selección' : 'Eliminar', icon: 'trash', danger: true, hint: 'Supr', onClick: () => removeNodes(sel) });
+      items.push({ label: multi ? 'Duplicate selection' : 'Duplicate', icon: 'copy', hint: 'Ctrl+D', onClick: () => duplicateNodes(sel) });
+      if (ix.isTop(n.id)) items.push({ label: multi ? 'Group selection' : 'Group', icon: 'group', hint: 'Ctrl+G', onClick: groupSelection });
+      if (!multi && n.groupId) items.push({ label: 'Remove from group', icon: 'group', onClick: () => { n.groupId = ''; Model.pruneEmptyGroups(s); Store.commit('ungroup'); topology.render(); refreshChrome(); } });
+      if (!multi && n.parentId) items.push({ label: 'Move to top level', icon: 'chevronUp', onClick: () => { const top = ix.top(n.id); Model.setParent(s, n.id, null, { x: top.x + 60, y: top.y + 60 }); Store.commit('unnest'); topology.render(); refreshChrome(); } });
+      items.push({ separator: true }, { label: multi ? 'Delete selection' : 'Delete', icon: 'trash', danger: true, hint: 'Del', onClick: () => removeNodes(sel) });
     } else if (info.linkId) {
       topology.selectLink(info.linkId);
-      items.push({ label: 'Editar conexión', icon: 'edit', onClick: () => panel.open({ kind: 'link', id: info.linkId }) },
-        { separator: true }, { label: 'Eliminar conexión', icon: 'trash', danger: true, onClick: () => removeLink(info.linkId) });
+      items.push({ label: 'Edit connection', icon: 'edit', onClick: () => panel.open({ kind: 'link', id: info.linkId }) },
+        { separator: true }, { label: 'Delete connection', icon: 'trash', danger: true, onClick: () => removeLink(info.linkId) });
     } else if (info.groupId) {
       const g = s.groups.find((x) => x.id === info.groupId);
       if (!g) return;
-      items.push({ label: 'Editar grupo', icon: 'edit', onClick: () => topology.selectGroup(g.id) });
-      items.push({ label: g.collapsed ? 'Expandir grupo' : 'Colapsar grupo', icon: 'group', onClick: () => topology.setGroupCollapsed(g.id, !g.collapsed) });
-      items.push({ separator: true }, { label: 'Eliminar grupo', icon: 'trash', danger: true, hint: 'Supr', onClick: () => removeGroup(g.id) });
+      items.push({ label: 'Edit group', icon: 'edit', onClick: () => topology.selectGroup(g.id) });
+      items.push({ label: g.collapsed ? 'Expand group' : 'Collapse group', icon: 'group', onClick: () => topology.setGroupCollapsed(g.id, !g.collapsed) });
+      items.push({ separator: true }, { label: 'Delete group', icon: 'trash', danger: true, hint: 'Del', onClick: () => removeGroup(g.id) });
     } else {
-      items.push({ header: 'Añadir aquí' });
+      items.push({ header: 'Add here' });
       QUICK_TYPES.forEach((t) => items.push({ label: NODE_TYPES[t].label, icon: NODE_TYPES[t].icon, onClick: () => { topology.addNode(t, info.world); refreshChrome(); } }));
       items.push({ separator: true },
-        { label: 'Pegar', icon: 'copy', hint: 'Ctrl+V', disabled: !NetHub.clipboard, onClick: () => { topology.paste(info.world); refreshChrome(); } },
-        { label: 'Seleccionar todo', hint: 'Ctrl+A', onClick: () => topology.selectAll() },
-        { label: 'Ordenar automáticamente', icon: 'wand', onClick: () => onZoomControl('layout') },
-        { label: 'Ajustar a la vista', icon: 'fit', hint: 'F', onClick: () => topology.fit() });
+        { label: 'Paste', icon: 'copy', hint: 'Ctrl+V', disabled: !NetHub.clipboard, onClick: () => { topology.paste(info.world); refreshChrome(); } },
+        { label: 'Select all', hint: 'Ctrl+A', onClick: () => topology.selectAll() },
+        { label: 'Auto-arrange', icon: 'wand', onClick: () => onZoomControl('layout') },
+        { label: 'Fit to view', icon: 'fit', hint: 'F', onClick: () => topology.fit() });
     }
     UI.showMenuAt(info.clientX, info.clientY, items);
   }
@@ -644,15 +644,15 @@
     // An ISP / Internet node has no interfaces to pick: the cable just ends on it.
     if (Model.typeMeta(node.type).noIface) {
       return '<select data-role="' + role + '-iface" hidden><option value="__auto__"></option></select><input type="text" data-role="' + role + '-new" hidden/>' +
-        '<span class="field-note">No necesita interfaz: el cable acaba directamente en el nodo.</span>';
+        '<span class="field-note">No interface needed: the cable ends directly on the node.</span>';
     }
     const used = occupiedIfaces(node);
     const hasFree = node.interfaces.some((i) => !used.has(i.id));
     const opts = node.interfaces.map((i) => '<option value="' + esc(i.id) + '"' + (used.has(i.id) ? ' disabled' : '') + '>' +
-      esc(i.name || '(sin nombre)') + (i.ip ? ' (' + esc(i.ip) + ')' : '') + (used.has(i.id) ? ' - ocupada' : '') + '</option>').join('');
-    return '<select data-role="' + role + '-iface">' + opts + '<option value="__new__">+ Nueva interfaz...</option></select>' +
+      esc(i.name || '(unnamed)') + (i.ip ? ' (' + esc(i.ip) + ')' : '') + (used.has(i.id) ? ' - in use' : '') + '</option>').join('');
+    return '<select data-role="' + role + '-iface">' + opts + '<option value="__new__">+ New interface...</option></select>' +
       '<input type="text" data-role="' + role + '-new" class="new-iface-input" hidden autocomplete="off"/>' +
-      (!hasFree ? '<span class="field-note">Todas las interfaces están en uso: se creará una nueva.</span>' : '');
+      (!hasFree ? '<span class="field-note">All interfaces are in use: a new one will be created.</span>' : '');
   }
 
   function openConnectModal(c) {
@@ -662,16 +662,16 @@
     const body = document.createElement('div');
     body.className = 'connect-form';
     body.innerHTML =
-      '<div class="field"><span class="field-label">Origen &middot; <b>' + esc(source.name) + '</b></span>' + ifaceSelect(source, 'a') + '</div>' +
-      '<div class="field"><span class="field-label">Destino &middot; <b>' + esc(target.name) + '</b></span>' + ifaceSelect(target, 'b') + '</div>' +
-      '<div class="field-row"><div class="field"><span class="field-label">Medio</span><select data-role="medium">' + Object.keys(MEDIA).map((k) => '<option value="' + k + '">' + esc(MEDIA[k].label) + '</option>').join('') + '</select></div>' +
-      '<div class="field"><span class="field-label">Velocidad</span><select data-role="speed"><option value="">-</option>' + SPEEDS.map((x) => '<option>' + x + '</option>').join('') + '</select></div></div>' +
-      '<div class="field"><span class="field-label">Etiqueta (opcional)</span><input type="text" data-role="label" placeholder="Troncal, uplink..." autocomplete="off"/></div>';
+      '<div class="field"><span class="field-label">Source &middot; <b>' + esc(source.name) + '</b></span>' + ifaceSelect(source, 'a') + '</div>' +
+      '<div class="field"><span class="field-label">Destination &middot; <b>' + esc(target.name) + '</b></span>' + ifaceSelect(target, 'b') + '</div>' +
+      '<div class="field-row"><div class="field"><span class="field-label">Medium</span><select data-role="medium">' + Object.keys(MEDIA).map((k) => '<option value="' + k + '">' + esc(MEDIA[k].label) + '</option>').join('') + '</select></div>' +
+      '<div class="field"><span class="field-label">Speed</span><select data-role="speed"><option value="">-</option>' + SPEEDS.map((x) => '<option>' + x + '</option>').join('') + '</select></div></div>' +
+      '<div class="field"><span class="field-label">Label (optional)</span><input type="text" data-role="label" placeholder="Trunk, uplink..." autocomplete="off"/></div>';
     const mediumSel = body.querySelector('[data-role="medium"]');
 
     const prefixFor = () => (mediumSel.value === 'wifi' ? 'wlan' : 'eth');
     const refreshPlaceholders = () => [['a', source], ['b', target]].forEach(([role, node]) => {
-      body.querySelector('[data-role="' + role + '-new"]').placeholder = NetHub.nextInterfaceName(node, prefixFor()) + ' (automático)';
+      body.querySelector('[data-role="' + role + '-new"]').placeholder = NetHub.nextInterfaceName(node, prefixFor()) + ' (automatic)';
     });
     [['a', source], ['b', target]].forEach(([role, node]) => {
       const sel = body.querySelector('[data-role="' + role + '-iface"]');
@@ -692,9 +692,9 @@
     mediumSel.addEventListener('change', refreshPlaceholders);
     autoMedium();
 
-    const cancelBtn = UI.button('Cancelar', 'btn-ghost');
-    const okBtn = UI.button('Crear conexión', 'btn-primary', 'link');
-    const m = UI.modal({ title: 'Nueva conexión', bodyEl: body, footerButtons: [cancelBtn, okBtn], width: '470px' });
+    const cancelBtn = UI.button('Cancel', 'btn-ghost');
+    const okBtn = UI.button('Create connection', 'btn-primary', 'link');
+    const m = UI.modal({ title: 'New connection', bodyEl: body, footerButtons: [cancelBtn, okBtn], width: '470px' });
     cancelBtn.addEventListener('click', () => m.close());
     const submit = () => {
       const medium = mediumSel.value;
@@ -725,7 +725,7 @@
       m.close();
       afterChange({ full: true });
       topology.selectLink(link.id);
-      UI.toast('Conexión creada.', 'success');
+      UI.toast('Connection created.', 'success');
     };
     okBtn.addEventListener('click', submit);
     body.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName !== 'SELECT') { e.preventDefault(); submit(); } });
@@ -735,55 +735,55 @@
 
   function mapMenuItems() {
     const active = Store.activeId();
-    return [{ header: 'Mapas' }].concat(Store.listMaps().map((m) => ({ label: m.name, icon: 'map', checked: m.id === active, onClick: () => Store.switchMap(m.id) })),
-      [{ separator: true }, { label: 'Nuevo mapa...', icon: 'plus', onClick: newMap }]);
+    return [{ header: 'Maps' }].concat(Store.listMaps().map((m) => ({ label: m.name, icon: 'map', checked: m.id === active, onClick: () => Store.switchMap(m.id) })),
+      [{ separator: true }, { label: 'New map...', icon: 'plus', onClick: newMap }]);
   }
 
   function mainMenuItems() {
     return [
-      { header: 'Mapa actual' },
-      { label: 'Nuevo mapa...', icon: 'plus', onClick: newMap },
-      { label: 'Renombrar...', icon: 'edit', onClick: () => UI.prompt({ title: 'Renombrar mapa', label: 'Nombre', value: mapName(), confirmLabel: 'Guardar', onConfirm: (v) => { Store.renameMap(Store.activeId(), v); refreshChrome(); } }) },
-      { label: 'Duplicar', icon: 'copy', onClick: () => { Store.duplicateMap(Store.activeId()); UI.toast('Mapa duplicado.', 'success'); } },
-      { label: 'Eliminar...', icon: 'trash', danger: true, onClick: deleteMap },
-      { separator: true }, { header: 'Importar' },
-      { label: 'Importar archivo...', icon: 'upload', hint: 'JSON, Tailscale, nmap, CSV', onClick: () => $('file-import').click() },
-      { separator: true }, { header: 'Exportar' },
-      { label: 'Mapa (JSON)', icon: 'download', onClick: () => exportAs('json') },
-      { label: 'Todos los mapas (JSON)', icon: 'download', onClick: () => exportAs('json-all') },
-      { label: 'Documentación (Markdown)', icon: 'book', onClick: () => exportAs('md') },
-      { label: 'Inventario (CSV)', icon: 'table', onClick: () => exportAs('csv-nodes') },
+      { header: 'Current map' },
+      { label: 'New map...', icon: 'plus', onClick: newMap },
+      { label: 'Rename...', icon: 'edit', onClick: () => UI.prompt({ title: 'Rename map', label: 'Name', value: mapName(), confirmLabel: 'Save', onConfirm: (v) => { Store.renameMap(Store.activeId(), v); refreshChrome(); } }) },
+      { label: 'Duplicate', icon: 'copy', onClick: () => { Store.duplicateMap(Store.activeId()); UI.toast('Map duplicated.', 'success'); } },
+      { label: 'Delete...', icon: 'trash', danger: true, onClick: deleteMap },
+      { separator: true }, { header: 'Import' },
+      { label: 'Import file...', icon: 'upload', hint: 'JSON, Tailscale, nmap, CSV', onClick: () => $('file-import').click() },
+      { separator: true }, { header: 'Export' },
+      { label: 'Map (JSON)', icon: 'download', onClick: () => exportAs('json') },
+      { label: 'All maps (JSON)', icon: 'download', onClick: () => exportAs('json-all') },
+      { label: 'Documentation (Markdown)', icon: 'book', onClick: () => exportAs('md') },
+      { label: 'Inventory (CSV)', icon: 'table', onClick: () => exportAs('csv-nodes') },
       { label: 'Interfaces (CSV)', icon: 'table', onClick: () => exportAs('csv-interfaces') },
-      { label: 'Servicios (CSV)', icon: 'table', onClick: () => exportAs('csv-services') },
-      { label: 'Conexiones (CSV)', icon: 'table', onClick: () => exportAs('csv-links') },
-      { label: 'Imagen (PNG)', icon: 'image', onClick: () => exportAs('png') },
-      { label: 'Imagen vectorial (SVG)', icon: 'image', onClick: () => exportAs('svg') },
-      { label: 'Diagrama (draw.io)', icon: 'file', onClick: () => exportAs('drawio') },
-      { label: 'Diagrama (Mermaid)', icon: 'file', onClick: () => exportAs('mermaid') },
+      { label: 'Services (CSV)', icon: 'table', onClick: () => exportAs('csv-services') },
+      { label: 'Connections (CSV)', icon: 'table', onClick: () => exportAs('csv-links') },
+      { label: 'Image (PNG)', icon: 'image', onClick: () => exportAs('png') },
+      { label: 'Vector image (SVG)', icon: 'image', onClick: () => exportAs('svg') },
+      { label: 'Diagram (draw.io)', icon: 'file', onClick: () => exportAs('drawio') },
+      { label: 'Diagram (Mermaid)', icon: 'file', onClick: () => exportAs('mermaid') },
       { separator: true },
-      { label: 'Versiones y copias...', icon: 'history', onClick: openVersions },
-      { label: 'Atajos de teclado', icon: 'keyboard', hint: '?', onClick: openShortcuts },
+      { label: 'Versions and backups...', icon: 'history', onClick: openVersions },
+      { label: 'Keyboard shortcuts', icon: 'keyboard', hint: '?', onClick: openShortcuts },
       { separator: true },
-      { label: 'Borrar todos los datos...', icon: 'trash', danger: true, onClick: wipeAll }
+      { label: 'Delete all data...', icon: 'trash', danger: true, onClick: wipeAll }
     ];
   }
 
   function newMap() {
-    UI.prompt({ title: 'Nuevo mapa', label: 'Nombre', placeholder: 'Casa, Oficina, Laboratorio...', confirmLabel: 'Crear', onConfirm: (name) => {
-      if (!Store.createMap(name)) UI.toast('No se pudo crear el mapa (almacenamiento lleno).', 'error');
+    UI.prompt({ title: 'New map', label: 'Name', placeholder: 'Home, Office, Lab...', confirmLabel: 'Create', onConfirm: (name) => {
+      if (!Store.createMap(name)) UI.toast('Could not create the map (storage full).', 'error');
     } });
   }
 
   function deleteMap() {
     UI.confirm({
-      title: 'Eliminar mapa', message: 'Se eliminará "' + mapName() + '" con todas sus versiones guardadas. Esta acción no se puede deshacer.', confirmLabel: 'Eliminar', danger: true,
-      onConfirm: () => { Store.deleteMap(Store.activeId()); UI.toast('Mapa eliminado.', 'success'); }
+      title: 'Delete map', message: 'This will delete "' + mapName() + '" and all its saved versions. This cannot be undone.', confirmLabel: 'Delete', danger: true,
+      onConfirm: () => { Store.deleteMap(Store.activeId()); UI.toast('Map deleted.', 'success'); }
     });
   }
 
   function wipeAll() {
     UI.confirm({
-      title: 'Borrar todos los datos', message: 'Se eliminarán todos los mapas, versiones y copias guardadas en este navegador (incluida la copia del formato antiguo). Exporta antes si quieres conservarlos.', confirmLabel: 'Borrar todo', danger: true,
+      title: 'Delete all data', message: 'This will delete all maps, versions and backups stored in this browser (including the old-format copy). Export first if you want to keep them.', confirmLabel: 'Delete everything', danger: true,
       onConfirm: () => { Store.discardPending(); Storage.clearAll().then(() => { try { localStorage.removeItem(PREFS_KEY); } catch (e) { /* ignore */ } location.reload(); }); }
     });
   }
@@ -797,12 +797,12 @@
     else if (kind === 'json-all') {
       Store.flush();
       const maps = Store.listMaps().map((m) => ({ name: m.name, state: m.id === Store.activeId() ? s : Storage.loadMap(m.id) })).filter((m) => m.state);
-      UI.download('nethub-todos-' + today() + '.json', Exporters.jsonAll(maps), 'application/json');
+      UI.download('nethub-all-' + today() + '.json', Exporters.jsonAll(maps), 'application/json');
     } else if (kind.indexOf('csv-') === 0) UI.download(base + '-' + kind.slice(4) + '.csv', Exporters.csv(kind.slice(4), s), 'text/csv;charset=utf-8');
     else if (kind === 'md') UI.download(base + '.md', Exporters.markdown(s, mapName()), 'text/markdown');
     else if (kind === 'mermaid') UI.download(base + '.mmd', Exporters.mermaid(s), 'text/plain');
     else if (kind === 'drawio' || kind === 'svg' || kind === 'png') {
-      if (!s.nodes.length) { UI.toast('El mapa está vacío.', 'error'); return; }
+      if (!s.nodes.length) { UI.toast('The map is empty.', 'error'); return; }
       if (currentView !== 'map') setView('map');
       requestAnimationFrame(() => {
         if (kind === 'drawio') UI.download(base + '.drawio', Exporters.drawio(s, topology, mapName()), 'application/xml');
@@ -811,7 +811,7 @@
       });
       return;
     }
-    UI.toast('Exportado correctamente.', 'success');
+    UI.toast('Exported successfully.', 'success');
   }
 
   // ---------- Import ----------
@@ -823,7 +823,7 @@
       if (!file) return;
       const reader = new FileReader();
       reader.onload = () => handleImport(String(reader.result), file.name);
-      reader.onerror = () => UI.toast('No se pudo leer el archivo.', 'error');
+      reader.onerror = () => UI.toast('Could not read the file.', 'error');
       reader.readAsText(file);
     });
     // dropping a file anywhere on the page imports it
@@ -840,60 +840,60 @@
 
   function handleImport(text, filename) {
     const kind = Importers.detect(text, filename);
-    if (!kind) { UI.toast('No reconozco el formato del archivo (admite JSON de NetHub o de "tailscale status --json", XML de nmap y CSV).', 'error', { duration: 6000 }); return; }
+    if (!kind) { UI.toast('Unrecognized file format (supported: NetHub JSON, "tailscale status --json", nmap XML and CSV).', 'error', { duration: 6000 }); return; }
     if (kind === 'nethub') importNetHub(text, filename);
     else previewImport(kind, text);
   }
 
   function importNetHub(text, filename) {
     let raw;
-    try { raw = JSON.parse(text); } catch (e) { UI.toast('El archivo no es JSON válido.', 'error'); return; }
-    const baseName = raw.name || String(filename || 'Importado').replace(/\.[^.]+$/, '');
+    try { raw = JSON.parse(text); } catch (e) { UI.toast('The file is not valid JSON.', 'error'); return; }
+    const baseName = raw.name || String(filename || 'Imported').replace(/\.[^.]+$/, '');
     let maps;
     try {
       if (Array.isArray(raw.maps)) maps = raw.maps.map((m, i) => ({ name: m.name || baseName + ' ' + (i + 1), state: NetHub.Migrate.normalize(m.map || m) }));
       else maps = [{ name: baseName, state: NetHub.Migrate.normalize(raw.map || raw) }];
-    } catch (e) { UI.toast('El archivo no es una topología válida de NetHub.', 'error'); return; }
+    } catch (e) { UI.toast('The file is not a valid NetHub topology.', 'error'); return; }
 
     const body = document.createElement('div');
     body.className = 'confirm-body';
     const total = maps.reduce((s, m) => s + m.state.nodes.length, 0);
-    body.innerHTML = '<div class="confirm-icon">' + Icons.svg('upload', 22) + '</div><p>' + (maps.length > 1 ? maps.length + ' mapas, ' : '') + total + ' nodos. Un archivo del formato anterior se convierte automáticamente al nuevo.</p>';
-    const cancel = UI.button('Cancelar', 'btn-ghost');
-    const asNew = UI.button(maps.length > 1 ? 'Añadir como mapas nuevos' : 'Como mapa nuevo', 'btn-primary');
+    body.innerHTML = '<div class="confirm-icon">' + Icons.svg('upload', 22) + '</div><p>' + (maps.length > 1 ? maps.length + ' maps, ' : '') + total + ' nodes. A file in the previous format is converted to the new one automatically.</p>';
+    const cancel = UI.button('Cancel', 'btn-ghost');
+    const asNew = UI.button(maps.length > 1 ? 'Add as new maps' : 'As a new map', 'btn-primary');
     const buttons = [cancel, asNew];
     let replace = null;
-    if (maps.length === 1) { replace = UI.button('Reemplazar el mapa actual', 'btn-danger'); buttons.splice(1, 0, replace); }
-    const m = UI.modal({ title: 'Importar topología', bodyEl: body, footerButtons: buttons });
+    if (maps.length === 1) { replace = UI.button('Replace the current map', 'btn-danger'); buttons.splice(1, 0, replace); }
+    const m = UI.modal({ title: 'Import topology', bodyEl: body, footerButtons: buttons });
     cancel.addEventListener('click', () => m.close());
     asNew.addEventListener('click', () => {
       m.close();
       maps.forEach((mp) => Store.createMap(mp.name, mp.state));
-      UI.toast('Importado correctamente.', 'success');
+      UI.toast('Imported successfully.', 'success');
     });
     if (replace) replace.addEventListener('click', () => {
       m.close();
       const next = maps[0].state;
       Store.replaceCurrent(next, 'importar');
       topology.fit();
-      UI.toast('Mapa reemplazado. Ctrl+Z lo deshace.', 'success', { action: { label: 'Deshacer', onClick: () => doUndo() } });
+      UI.toast('Map replaced. Ctrl+Z undoes it.', 'success', { action: { label: 'Undo', onClick: () => doUndo() } });
     });
   }
 
   function previewImport(kind, text) {
     let plan;
-    try { plan = Importers.parse(kind, text); } catch (e) { UI.toast(e.message || 'No se pudo importar el archivo.', 'error', { duration: 6000 }); return; }
+    try { plan = Importers.parse(kind, text); } catch (e) { UI.toast(e.message || 'Could not import the file.', 'error', { duration: 6000 }); return; }
     const s = getState();
     const dry = Importers.apply(JSON.parse(JSON.stringify(s)), plan);
     const label = { tailscale: 'Tailscale', nmap: 'nmap', csv: 'CSV' }[kind];
     const body = document.createElement('div');
     body.className = 'confirm-body';
-    body.innerHTML = '<div class="confirm-icon">' + Icons.svg('upload', 22) + '</div><p><b>' + plan.items.length + '</b> equipos desde ' + label + ': <b>' + dry.added + '</b> nuevos y <b>' + dry.updated +
-      '</b> que ya existen en el mapa (se completan sin duplicar, por IP o nombre).</p>' +
+    body.innerHTML = '<div class="confirm-icon">' + Icons.svg('upload', 22) + '</div><p><b>' + plan.items.length + '</b> hosts from ' + label + ': <b>' + dry.added + '</b> new and <b>' + dry.updated +
+      '</b> already on the map (completed without duplicating, matched by IP or name).</p>' +
       '<p class="field-note">' + esc(plan.items.slice(0, 8).map((i) => i.name).join(', ')) + (plan.items.length > 8 ? '...' : '') + '</p>';
-    const cancel = UI.button('Cancelar', 'btn-ghost');
-    const ok = UI.button('Importar al mapa actual', 'btn-primary');
-    const m = UI.modal({ title: 'Importar desde ' + label, bodyEl: body, footerButtons: [cancel, ok] });
+    const cancel = UI.button('Cancel', 'btn-ghost');
+    const ok = UI.button('Import into the current map', 'btn-primary');
+    const m = UI.modal({ title: 'Import from ' + label, bodyEl: body, footerButtons: [cancel, ok] });
     cancel.addEventListener('click', () => m.close());
     ok.addEventListener('click', () => {
       m.close();
@@ -902,7 +902,7 @@
       if (currentView !== 'map') setView('map'); else topology.render();
       refreshChrome();
       topology.fit();
-      UI.toast(r.added + ' añadidos, ' + r.updated + ' actualizados.', 'success', { action: { label: 'Deshacer', onClick: () => doUndo() } });
+      UI.toast(r.added + ' added, ' + r.updated + ' updated.', 'success', { action: { label: 'Undo', onClick: () => doUndo() } });
     });
   }
 
@@ -915,13 +915,13 @@
     const draw = () => {
       const c = Validate.counts(issues);
       body.innerHTML = issues.length
-        ? '<div class="val-summary"><span class="badge error">' + c.error + ' errores</span><span class="badge warn">' + c.warn + ' avisos</span><span class="badge">' + c.info + ' sugerencias</span></div>' +
+        ? '<div class="val-summary"><span class="badge error">' + c.error + ' errors</span><span class="badge warn">' + c.warn + ' warnings</span><span class="badge">' + c.info + ' suggestions</span></div>' +
           issues.map((it, i) => '<div class="val-item ' + it.level + '"><span class="val-icon">' + Icons.svg(it.level === 'info' ? 'info' : 'alertTriangle', 16) + '</span>' +
             '<div class="val-text"><div class="val-title">' + esc(it.title) + '</div><div class="val-detail">' + esc(it.detail) + '</div>' +
-            '<div class="val-actions">' + (it.nodeId ? '<button type="button" class="btn btn-ghost btn-sm" data-go="' + i + '">Ver nodo</button>' : '') +
-            (it.networkId ? '<button type="button" class="btn btn-ghost btn-sm" data-net="' + i + '">Ver red</button>' : '') +
+            '<div class="val-actions">' + (it.nodeId ? '<button type="button" class="btn btn-ghost btn-sm" data-go="' + i + '">View node</button>' : '') +
+            (it.networkId ? '<button type="button" class="btn btn-ghost btn-sm" data-net="' + i + '">View network</button>' : '') +
             (it.fix ? '<button type="button" class="btn btn-primary btn-sm" data-fix="' + i + '">' + esc(it.fix.label) + '</button>' : '') + '</div></div></div>').join('')
-        : '<div class="confirm-body"><div class="confirm-icon">' + Icons.svg('checkCircle', 22) + '</div><p>No se han detectado problemas: sin IPs duplicadas, redes solapadas ni enlaces redundantes.</p></div>';
+        : '<div class="confirm-body"><div class="confirm-icon">' + Icons.svg('checkCircle', 22) + '</div><p>No problems found: no duplicate IPs, overlapping networks or redundant links.</p></div>';
       body.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => { m.close(); selectNode(issues[+b.dataset.go].nodeId); }));
       body.querySelectorAll('[data-net]').forEach((b) => b.addEventListener('click', () => { m.close(); setView('networks'); Views.ui.openNet = issues[+b.dataset.net].networkId; renderCurrentView(); }));
       body.querySelectorAll('[data-fix]').forEach((b) => b.addEventListener('click', () => {
@@ -929,13 +929,13 @@
         const n = it.fix.run(getState());
         Store.commit('fix');
         afterChange({ full: true });
-        UI.toast('Aplicado' + (n ? ' (' + n + ')' : '') + '. Ctrl+Z lo deshace.', 'success');
+        UI.toast('Applied' + (n ? ' (' + n + ')' : '') + '. Ctrl+Z undoes it.', 'success');
         issues = Validate.run(getState());
         draw();
       }));
     };
-    const close = UI.button('Cerrar', 'btn-ghost');
-    const m = UI.modal({ title: 'Revisión de la red', bodyEl: body, footerButtons: [close], width: '640px' });
+    const close = UI.button('Close', 'btn-ghost');
+    const m = UI.modal({ title: 'Network review', bodyEl: body, footerButtons: [close], width: '640px' });
     close.addEventListener('click', () => m.close());
     draw();
   }
@@ -947,41 +947,41 @@
       const snaps = Store.listSnapshots().slice().reverse();
       const u = Storage.usage();
       body.innerHTML =
-        '<div class="field-note">Las versiones son puntos de restauración de este mapa guardados en el navegador. Se crea una automática como máximo cada 12 horas, antes de un cambio. Ocupan espacio de localStorage (' + Math.round(u.ratio * 100) + '% usado).</div>' +
-        '<div class="ver-save"><input type="text" placeholder="Nombre de la versión (opcional)" autocomplete="off"/><button type="button" class="btn btn-primary btn-sm">Guardar versión ahora</button></div>' +
-        (snaps.length ? '<div class="ver-list">' + snaps.map((sn) => '<div class="ver-item"><div class="ver-text"><span class="ver-title">' + esc(sn.label || 'Versión') + (sn.auto ? '<span class="badge">auto</span>' : '') + '</span>' +
-          '<span class="ver-meta">' + esc(new Date(sn.ts).toLocaleString()) + ' · ' + sn.nodes + ' nodos</span></div>' +
-          '<button type="button" class="btn btn-ghost btn-sm" data-restore="' + esc(sn.id) + '">Restaurar</button><button type="button" class="icon-btn danger" data-del="' + esc(sn.id) + '" title="Borrar">' + Icons.svg('trash', 14) + '</button></div>').join('') + '</div>'
-          : '<div class="empty-card">Todavía no hay versiones guardadas.</div>');
+        '<div class="field-note">Versions are restore points of this map stored in the browser. At most one automatic version is created every 12 hours, before a change. They take up storage space (' + Math.round(u.ratio * 100) + '% used).</div>' +
+        '<div class="ver-save"><input type="text" placeholder="Version name (optional)" autocomplete="off"/><button type="button" class="btn btn-primary btn-sm">Save version now</button></div>' +
+        (snaps.length ? '<div class="ver-list">' + snaps.map((sn) => '<div class="ver-item"><div class="ver-text"><span class="ver-title">' + esc(sn.label || 'Version') + (sn.auto ? '<span class="badge">auto</span>' : '') + '</span>' +
+          '<span class="ver-meta">' + esc(new Date(sn.ts).toLocaleString('en-GB')) + ' · ' + sn.nodes + ' nodes</span></div>' +
+          '<button type="button" class="btn btn-ghost btn-sm" data-restore="' + esc(sn.id) + '">Restore</button><button type="button" class="icon-btn danger" data-del="' + esc(sn.id) + '" title="Delete">' + Icons.svg('trash', 14) + '</button></div>').join('') + '</div>'
+          : '<div class="empty-card">No saved versions yet.</div>');
       body.querySelector('.ver-save button').addEventListener('click', () => {
         const label = body.querySelector('.ver-save input').value.trim();
-        if (Store.saveSnapshot(label || 'Versión ' + new Date().toLocaleString())) UI.toast('Versión guardada.', 'success'); else UI.toast('No hay espacio para guardar la versión.', 'error');
+        if (Store.saveSnapshot(label || 'Version ' + new Date().toLocaleString('en-GB'))) UI.toast('Version saved.', 'success'); else UI.toast('There is no space to save the version.', 'error');
         draw();
       });
       body.querySelectorAll('[data-restore]').forEach((b) => b.addEventListener('click', () => {
-        if (Store.restoreSnapshot(b.dataset.restore)) { m.close(); UI.toast('Versión restaurada. Ctrl+Z lo deshace.', 'success', { action: { label: 'Deshacer', onClick: () => doUndo() } }); }
-        else UI.toast('No se pudo restaurar la versión.', 'error');
+        if (Store.restoreSnapshot(b.dataset.restore)) { m.close(); UI.toast('Version restored. Ctrl+Z undoes it.', 'success', { action: { label: 'Undo', onClick: () => doUndo() } }); }
+        else UI.toast('Could not restore the version.', 'error');
       }));
       body.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => { Store.deleteSnapshot(b.dataset.del); draw(); }));
     };
-    const close = UI.button('Cerrar', 'btn-ghost');
-    const m = UI.modal({ title: 'Versiones de "' + mapName() + '"', bodyEl: body, footerButtons: [close], width: '560px' });
+    const close = UI.button('Close', 'btn-ghost');
+    const m = UI.modal({ title: 'Versions of "' + mapName() + '"', bodyEl: body, footerButtons: [close], width: '560px' });
     close.addEventListener('click', () => m.close());
     draw();
   }
 
   function openShortcuts() {
     const rows = [
-      ['Ctrl+K', 'Buscar nodos, IPs, servicios y comandos'], ['Ctrl+Z / Ctrl+Mayús+Z', 'Deshacer / rehacer'], ['Supr', 'Eliminar la selección'],
-      ['Ctrl+C / Ctrl+V', 'Copiar / pegar nodos (también entre mapas)'], ['Ctrl+D', 'Duplicar'], ['Ctrl+A', 'Seleccionar todo'], ['Ctrl+G', 'Agrupar la selección'],
-      ['Mayús+clic', 'Añadir o quitar de la selección'], ['Mayús+arrastrar', 'Seleccionar con un rectángulo'], ['Flechas', 'Mover la selección (Mayús: más rápido)'],
-      ['Alt (al arrastrar)', 'Mover sin ajustar a la rejilla'], ['1 - 4', 'Capa: física, lógica, overlays, servicios'], ['F', 'Ajustar a la vista'], ['Clic derecho', 'Menú contextual'],
-      ['Rueda / Ctrl+rueda', 'Desplazar / zoom'], ['Esc', 'Quitar selección o cerrar']
+      ['Ctrl+K', 'Search nodes, IPs, services and commands'], ['Ctrl+Z / Ctrl+Shift+Z', 'Undo / redo'], ['Del', 'Delete the selection'],
+      ['Ctrl+C / Ctrl+V', 'Copy / paste nodes (also between maps)'], ['Ctrl+D', 'Duplicate'], ['Ctrl+A', 'Select all'], ['Ctrl+G', 'Group the selection'],
+      ['Shift+click', 'Add or remove from the selection'], ['Shift+drag', 'Select with a rectangle'], ['Arrow keys', 'Move the selection (Shift: faster)'],
+      ['Alt (while dragging)', 'Move without snapping to the grid'], ['1 - 4', 'Layer: physical, logical, overlays, services'], ['F', 'Fit to view'], ['Right click', 'Context menu'],
+      ['Wheel / Ctrl+wheel', 'Pan / zoom'], ['Esc', 'Clear selection or close']
     ];
     const body = document.createElement('div');
     body.innerHTML = '<table class="kbd-table">' + rows.map((r) => '<tr><td><kbd>' + esc(r[0]) + '</kbd></td><td>' + esc(r[1]) + '</td></tr>').join('') + '</table>';
-    const close = UI.button('Cerrar', 'btn-ghost');
-    const m = UI.modal({ title: 'Atajos de teclado', bodyEl: body, footerButtons: [close], width: '520px' });
+    const close = UI.button('Close', 'btn-ghost');
+    const m = UI.modal({ title: 'Keyboard shortcuts', bodyEl: body, footerButtons: [close], width: '520px' });
     close.addEventListener('click', () => m.close());
   }
 
@@ -989,19 +989,19 @@
 
   function openPalette() {
     const cmds = [
-      { label: 'Revisar la red', icon: 'checkCircle', run: openValidation, keywords: 'validar comprobar errores' },
-      { label: 'Ordenar el mapa automáticamente', icon: 'wand', run: () => { setView('map'); onZoomControl('layout'); }, keywords: 'layout organizar' },
-      { label: 'Separar nodos solapados', icon: 'wand', run: () => { setView('map'); const n = topology.separateOverlaps(); UI.toast(n ? n + ' nodos separados.' : 'No hay nodos solapados.', 'info'); }, keywords: 'overlap colisiones' },
-      { label: 'Ir a: Mapa', icon: 'map', run: () => setView('map') }, { label: 'Ir a: Inventario', icon: 'table', run: () => setView('inventory') },
-      { label: 'Ir a: Redes', icon: 'subnet', run: () => setView('networks') }, { label: 'Ir a: Paneles', icon: 'launch', run: () => setView('panels') },
-      { label: 'Capa: Física', icon: 'layers', run: () => { setView('map'); setLayer('physical'); } }, { label: 'Capa: Lógica (redes)', icon: 'layers', run: () => { setView('map'); setLayer('logical'); } },
-      { label: 'Capa: Overlays (VPN)', icon: 'layers', run: () => { setView('map'); setLayer('overlay'); } }, { label: 'Capa: Servicios', icon: 'layers', run: () => { setView('map'); setLayer('services'); } },
-      { label: 'Nuevo mapa', icon: 'plus', run: newMap }, { label: 'Importar archivo', icon: 'upload', run: () => $('file-import').click(), keywords: 'tailscale nmap csv json' },
-      { label: 'Exportar documentación (Markdown)', icon: 'book', run: () => exportAs('md') }, { label: 'Exportar PNG', icon: 'image', run: () => exportAs('png') },
-      { label: 'Exportar JSON', icon: 'download', run: () => exportAs('json') }, { label: 'Versiones y copias', icon: 'history', run: openVersions },
-      { label: 'Atajos de teclado', icon: 'keyboard', run: openShortcuts }
+      { label: 'Review the network', icon: 'checkCircle', run: openValidation, keywords: 'validate check errors' },
+      { label: 'Auto-arrange the map', icon: 'wand', run: () => { setView('map'); onZoomControl('layout'); }, keywords: 'layout organize' },
+      { label: 'Separate overlapping nodes', icon: 'wand', run: () => { setView('map'); const n = topology.separateOverlaps(); UI.toast(n ? n + ' nodes separated.' : 'No overlapping nodes.', 'info'); }, keywords: 'overlap collisions' },
+      { label: 'Go to: Map', icon: 'map', run: () => setView('map') }, { label: 'Go to: Inventory', icon: 'table', run: () => setView('inventory') },
+      { label: 'Go to: Networks', icon: 'subnet', run: () => setView('networks') }, { label: 'Go to: Panels', icon: 'launch', run: () => setView('panels') },
+      { label: 'Layer: Physical', icon: 'layers', run: () => { setView('map'); setLayer('physical'); } }, { label: 'Layer: Logical (networks)', icon: 'layers', run: () => { setView('map'); setLayer('logical'); } },
+      { label: 'Layer: Overlays (VPN)', icon: 'layers', run: () => { setView('map'); setLayer('overlay'); } }, { label: 'Layer: Services', icon: 'layers', run: () => { setView('map'); setLayer('services'); } },
+      { label: 'New map', icon: 'plus', run: newMap }, { label: 'Import file', icon: 'upload', run: () => $('file-import').click(), keywords: 'tailscale nmap csv json' },
+      { label: 'Export documentation (Markdown)', icon: 'book', run: () => exportAs('md') }, { label: 'Export PNG', icon: 'image', run: () => exportAs('png') },
+      { label: 'Export JSON', icon: 'download', run: () => exportAs('json') }, { label: 'Versions and backups', icon: 'history', run: openVersions },
+      { label: 'Keyboard shortcuts', icon: 'keyboard', run: openShortcuts }
     ];
-    Object.keys(NODE_TYPES).forEach((t) => cmds.push({ label: 'Añadir ' + NODE_TYPES[t].label, icon: NODE_TYPES[t].icon, run: () => addFromLibrary(t), keywords: 'crear nuevo ' + t }));
+    Object.keys(NODE_TYPES).forEach((t) => cmds.push({ label: 'Add ' + NODE_TYPES[t].label, icon: NODE_TYPES[t].icon, run: () => addFromLibrary(t), keywords: 'create new ' + t }));
     Search.open({
       getState, commands: cmds,
       onSelectNode: (id, tab) => { if (currentView !== 'map' && currentView !== 'inventory') setView('map'); selectNode(id, tab); },
@@ -1039,7 +1039,7 @@
         return;
       }
       if (mod && k === 'a') { e.preventDefault(); topology.selectAll(); return; }
-      if (mod && k === 'c') { if (topology.copySelection()) UI.toast('Copiado. Pega con Ctrl+V (también en otro mapa).', 'info', { duration: 1800 }); return; }
+      if (mod && k === 'c') { if (topology.copySelection()) UI.toast('Copied. Paste with Ctrl+V (also on another map).', 'info', { duration: 1800 }); return; }
       if (mod && k === 'v') { e.preventDefault(); if (topology.paste()) refreshChrome(); return; }
       if (mod && k === 'd') { e.preventDefault(); if (sel.length) duplicateNodes(sel); return; }
       if (mod && k === 'g') { e.preventDefault(); if (topology.topSelection().length) groupSelection(); return; }

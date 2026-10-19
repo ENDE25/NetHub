@@ -257,7 +257,7 @@
 
     state.networks = arr(raw.networks).filter((n) => isObj(n) && typeof n.id === 'string').map((n, idx) => ({
       id: n.id,
-      name: str(n.name).trim() || 'Red',
+      name: str(n.name).trim() || 'Network',
       cidr: str(n.cidr).trim(),
       vlan: str(n.vlan).trim(),
       gateway: str(n.gateway).trim(),
@@ -276,7 +276,7 @@
     }));
     state.groups = arr(raw.groups).filter((g) => isObj(g) && typeof g.id === 'string').map((g) => ({
       id: g.id,
-      name: str(g.name).trim() || 'Grupo',
+      name: str(g.name).trim() || 'Group',
       color: color(g.color, '#5b8cff'),
       collapsed: !!g.collapsed,
       x: num(g.x), y: num(g.y)
@@ -321,10 +321,10 @@
 
   // Accepts anything NetHub has ever exported (v1 or v2 map) and returns a clean v2 state, or throws.
   function normalize(raw) {
-    if (!isObj(raw)) throw new Error('Formato inválido');
+    if (!isObj(raw)) throw new Error('Invalid format');
     if (Array.isArray(raw.nodes)) return sanitize(raw);
     if (Array.isArray(raw.devices)) return sanitize(fromV1(raw));
-    throw new Error('Formato inválido');
+    throw new Error('Invalid format');
   }
 
   global.NetHub.Migrate = { VERSION, defaultState, normalize, fromV1, inferNetworks, guessIfaceKind };

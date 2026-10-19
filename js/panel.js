@@ -38,18 +38,18 @@
 
   function networkSummaryHtml(state, net) {
     const a = Ipam.analyze(state, net);
-    if (!a.valid) return '<div class="field-note">Indica un CIDR válido (por ejemplo 192.168.1.0/24) para ver el uso de direcciones.</div>';
+    if (!a.valid) return '<div class="field-note">Enter a valid CIDR (for example 192.168.1.0/24) to see address usage.</div>';
     const next = a.nextFree();
     return '<div class="ipam-bar"><div class="ipam-fill" style="width:' + a.pct + '%;background:' + net.color + '"></div></div>' +
-      '<div class="ipam-stats"><span><b>' + a.usedCount + '</b> en uso</span>' + (a.dhcp ? '<span><b>' + a.reserved + '</b> reservadas DHCP</span>' : '') +
-      '<span><b>' + a.free + '</b> libres de ' + a.usable + '</span></div>' +
-      (next ? '<div class="field-note">Siguiente IP libre: <code>' + esc(next) + '</code></div>' : '<div class="field-note">No quedan direcciones libres.</div>') +
-      (net.inferred ? '<div class="field-note warn">Red detectada automáticamente a partir de las IPs, asumiendo /24. Comprueba la máscara.</div>' : '');
+      '<div class="ipam-stats"><span><b>' + a.usedCount + '</b> in use</span>' + (a.dhcp ? '<span><b>' + a.reserved + '</b> DHCP reserved</span>' : '') +
+      '<span><b>' + a.free + '</b> free of ' + a.usable + '</span></div>' +
+      (next ? '<div class="field-note">Next free IP: <code>' + esc(next) + '</code></div>' : '<div class="field-note">No free addresses left.</div>') +
+      (net.inferred ? '<div class="field-note warn">Network detected automatically from the IPs, assuming /24. Check the mask.</div>' : '');
   }
 
   function networkMembersHtml(state, net) {
     const list = Ipam.members(state, net);
-    if (!list.length) return '<div class="field-note">Ninguna interfaz pertenece a esta red todavía.</div>';
+    if (!list.length) return '<div class="field-note">No interface belongs to this network yet.</div>';
     return '<div class="member-list">' + list.map((m) =>
       '<button type="button" class="member-row" data-node="' + esc(m.node.id) + '"><span class="member-ip">' + esc(m.text || '-') + '</span>' +
       '<span class="member-name">' + esc(m.node.name) + '</span><span class="member-iface">' + esc(m.iface.name) + '</span></button>').join('') + '</div>';
@@ -60,18 +60,18 @@
     const wrap = document.createElement('div');
     wrap.className = 'details-pane';
     wrap.innerHTML =
-      field('Nombre', textInput('name', net.name, 'LAN, Invitados, Servidores...')) +
+      field('Name', textInput('name', net.name, 'LAN, Guests, Servers...')) +
       '<div class="field-row">' + field('CIDR', textInput('cidr', net.cidr, '192.168.1.0/24', 'mono')) +
-        field('VLAN', textInput('vlan', net.vlan, 'ej. 10')) + '</div>' +
+        field('VLAN', textInput('vlan', net.vlan, 'e.g. 10')) + '</div>' +
       '<div class="field-row">' + field('Gateway', textInput('gateway', net.gateway, '192.168.1.1', 'mono')) +
         field('Color', '<input type="color" data-f="color" value="' + esc(net.color) + '"/>')  + '</div>' +
-      '<div class="field-row">' + field('Rango DHCP: inicio', textInput('dhcpStart', net.dhcpStart, '192.168.1.100', 'mono')) +
-        field('fin', textInput('dhcpEnd', net.dhcpEnd, '192.168.1.200', 'mono')) + '</div>' +
-      field('Notas', '<textarea data-f="notes" rows="3" placeholder="DNS, servidor DHCP, observaciones...">' + esc(net.notes) + '</textarea>') +
-      section('Uso de direcciones') + '<div data-role="summary"></div>' +
-      '<div class="inline-actions"><button type="button" class="btn btn-ghost btn-sm" data-role="copy-next">' + Icons.svg('copy', 13) + '<span>Copiar siguiente IP libre</span></button></div>' +
-      section('Interfaces en esta red') + '<div data-role="members"></div>' +
-      '<button class="btn btn-danger btn-block danger-zone" data-role="delete">' + Icons.svg('trash', 14) + '<span>Eliminar red</span></button>';
+      '<div class="field-row">' + field('DHCP start', textInput('dhcpStart', net.dhcpStart, '192.168.1.100', 'mono')) +
+        field('DHCP end', textInput('dhcpEnd', net.dhcpEnd, '192.168.1.200', 'mono')) + '</div>' +
+      field('Notes', '<textarea data-f="notes" rows="3" placeholder="DNS, DHCP server, remarks...">' + esc(net.notes) + '</textarea>') +
+      section('Address usage') + '<div data-role="summary"></div>' +
+      '<div class="inline-actions"><button type="button" class="btn btn-ghost btn-sm" data-role="copy-next">' + Icons.svg('copy', 13) + '<span>Copy next free IP</span></button></div>' +
+      section('Interfaces on this network') + '<div data-role="members"></div>' +
+      '<button class="btn btn-danger btn-block danger-zone" data-role="delete">' + Icons.svg('trash', 14) + '<span>Delete network</span></button>';
     const refresh = () => {
       wrap.querySelector('[data-role="summary"]').innerHTML = networkSummaryHtml(state, net);
       const m = wrap.querySelector('[data-role="members"]');
@@ -88,7 +88,7 @@
     wrap.querySelector('[data-role="copy-next"]').addEventListener('click', () => {
       const a = Ipam.analyze(state, net);
       const next = a.valid && a.nextFree();
-      if (next) UI.copyText(next, 'IP libre copiada: ' + next); else UI.toast('No hay IP libre calculable.', 'error');
+      if (next) UI.copyText(next, 'Free IP copied: ' + next); else UI.toast('No free IP could be calculated.', 'error');
     });
     wrap.querySelector('[data-role="delete"]').addEventListener('click', () => opts.onDelete());
     return wrap;
@@ -98,17 +98,17 @@
     const wrap = document.createElement('div');
     wrap.className = 'details-pane';
     wrap.innerHTML =
-      field('Nombre', textInput('name', ov.name, 'Tailscale, WireGuard...')) +
-      '<div class="field-row">' + field('Rango (opcional)', textInput('cidr', ov.cidr, '100.64.0.0/10', 'mono')) +
+      field('Name', textInput('name', ov.name, 'Tailscale, WireGuard...')) +
+      '<div class="field-row">' + field('Range (optional)', textInput('cidr', ov.cidr, '100.64.0.0/10', 'mono')) +
         field('Color', '<input type="color" data-f="color" value="' + esc(ov.color) + '"/>') + '</div>' +
-      field('Notas', '<textarea data-f="notes" rows="3" placeholder="Cómo se conecta, ACLs, exit nodes...">' + esc(ov.notes) + '</textarea>') +
-      section('Miembros', 'Nodos con una interfaz de túnel en este overlay') + '<div data-role="members"></div>' +
-      '<button class="btn btn-danger btn-block danger-zone" data-role="delete">' + Icons.svg('trash', 14) + '<span>Eliminar overlay</span></button>';
+      field('Notes', '<textarea data-f="notes" rows="3" placeholder="How it connects, ACLs, exit nodes...">' + esc(ov.notes) + '</textarea>') +
+      section('Members', 'Nodes with a tunnel interface in this overlay') + '<div data-role="members"></div>' +
+      '<button class="btn btn-danger btn-block danger-zone" data-role="delete">' + Icons.svg('trash', 14) + '<span>Delete overlay</span></button>';
     const members = Ipam.overlayMembers(state, ov);
     const m = wrap.querySelector('[data-role="members"]');
     m.innerHTML = members.length ? '<div class="member-list">' + members.map((x) =>
       '<button type="button" class="member-row" data-node="' + esc(x.node.id) + '"><span class="member-ip">' + esc(x.text || '-') + '</span><span class="member-name">' + esc(x.node.name) + '</span>' +
-      '<span class="member-iface">' + esc(x.routes ? 'rutas: ' + x.routes : x.iface.name) + '</span></button>').join('') + '</div>' : '<div class="field-note">Ningún nodo pertenece a este overlay todavía.</div>';
+      '<span class="member-iface">' + esc(x.routes ? 'routes: ' + x.routes : x.iface.name) + '</span></button>').join('') + '</div>' : '<div class="field-note">No node belongs to this overlay yet.</div>';
     m.querySelectorAll('[data-node]').forEach((b) => b.addEventListener('click', () => opts.onSelectNode && opts.onSelectNode(b.dataset.node)));
     bindFields(wrap, ov, (key, value, el) => {
       if (key === 'cidr') el.classList.toggle('invalid', !!value.trim() && !Net.parseCidr(value));
@@ -144,11 +144,11 @@
   Panel.prototype._build = function () {
     this.root.innerHTML =
       '<div class="side-panel-header">' +
-        '<button class="icon-btn" data-role="back" hidden title="Volver al elemento padre">' + Icons.svg('back', 16) + '</button>' +
+        '<button class="icon-btn" data-role="back" hidden title="Back to parent">' + Icons.svg('back', 16) + '</button>' +
         '<span class="sp-icon"></span>' +
         '<div class="sp-title"><span class="sp-name"></span><span class="sp-type"></span></div>' +
         '<span class="sp-actions"></span>' +
-        '<button class="icon-btn" data-role="close" title="Cerrar">' + Icons.svg('close', 17) + '</button>' +
+        '<button class="icon-btn" data-role="close" title="Close">' + Icons.svg('close', 17) + '</button>' +
       '</div>' +
       '<div class="sp-tabs" hidden></div>' +
       '<div class="side-panel-body"></div>';
@@ -249,18 +249,18 @@
     else if (isp) icon = { html: '<span class="isp-monogram">' + esc(isp.initials) + '</span>', bg: isp.color + '26', color: isp.color };
 
     const urls = Model.nodeUrls(n);
-    const actions = [{ icon: 'map', title: 'Ver en el mapa', onClick: () => this.onShowInMap(n.id) }];
-    if (urls.length) actions.push({ icon: 'externalLink', title: 'Abrir ' + urls[0].name, onClick: (e) => this._openUrls(urls, e.currentTarget) });
-    actions.push({ icon: 'copy', title: 'Duplicar (Ctrl+D)', onClick: () => this.onDuplicateNode(n.id) });
-    actions.push({ icon: 'trash', title: 'Eliminar (Supr)', danger: true, onClick: () => this.onDeleteNode(n.id) });
-    this._header(icon, n.name || meta.label, meta.label + (parent ? ' en ' + parent.name : ''), { back: !!parent, actions });
+    const actions = [{ icon: 'map', title: 'Show on map', onClick: () => this.onShowInMap(n.id) }];
+    if (urls.length) actions.push({ icon: 'externalLink', title: 'Open ' + urls[0].name, onClick: (e) => this._openUrls(urls, e.currentTarget) });
+    actions.push({ icon: 'copy', title: 'Duplicate (Ctrl+D)', onClick: () => this.onDuplicateNode(n.id) });
+    actions.push({ icon: 'trash', title: 'Delete (Del)', danger: true, onClick: () => this.onDeleteNode(n.id) });
+    this._header(icon, n.name || meta.label, meta.label + (parent ? ' in ' + parent.name : ''), { back: !!parent, actions });
 
     const kids = ix.children(n.id);
     if (n.type === 'group') return this._renderGroupNode(n, kids, parent);
     const tabs = [{ id: 'general', label: 'General' }];
     if (!meta.noIface) tabs.push({ id: 'interfaces', label: 'Interfaces', count: n.interfaces.length });
-    if (n.type !== 'isp') tabs.push({ id: 'services', label: 'Servicios', count: n.services.length });
-    if (meta.canHost || kids.length) tabs.push({ id: 'content', label: 'Contenido', count: kids.length });
+    if (n.type !== 'isp') tabs.push({ id: 'services', label: 'Services', count: n.services.length });
+    if (meta.canHost || kids.length) tabs.push({ id: 'content', label: 'Contents', count: kids.length });
     tabs.push({ id: 'overlays', label: 'Overlays', count: Model.overlaysOfNode(state, n).length });
     this._setTabs(tabs);
 
@@ -273,20 +273,20 @@
   // A Grupo only has an (optional) name.
   Panel.prototype._renderGroupNode = function (n, kids, parent) {
     const self = this;
-    this._header({ html: Icons.svg('group', 18) }, n.name || 'Grupo', 'Grupo · ' + kids.length + (kids.length === 1 ? ' nodo' : ' nodos') + (parent ? ' en ' + parent.name : ''), {
+    this._header({ html: Icons.svg('group', 18) }, n.name || 'Group', 'Group · ' + kids.length + (kids.length === 1 ? ' node' : ' nodes') + (parent ? ' in ' + parent.name : ''), {
       back: !!parent,
-      actions: [{ icon: 'map', title: 'Ver en el mapa', onClick: () => self.onShowInMap(n.id) },
-        { icon: 'copy', title: 'Duplicar (Ctrl+D)', onClick: () => self.onDuplicateNode(n.id) },
-        { icon: 'trash', title: 'Eliminar grupo (los nodos se conservan)', danger: true, onClick: () => self.onDeleteNode(n.id) }]
+      actions: [{ icon: 'map', title: 'Show on map', onClick: () => self.onShowInMap(n.id) },
+        { icon: 'copy', title: 'Duplicate (Ctrl+D)', onClick: () => self.onDuplicateNode(n.id) },
+        { icon: 'trash', title: 'Delete group (its nodes are kept)', danger: true, onClick: () => self.onDeleteNode(n.id) }]
     });
     this._setTabs(null);
     const wrap = document.createElement('div');
     wrap.className = 'details-pane';
-    wrap.innerHTML = field('Nombre', textInput('name', n.name, 'Opcional'), 'Arrastra nodos sobre el grupo para meterlos dentro; se ajusta solo al tamaño') +
-      field('Disposición del contenido', selectHtml('layout', [{ v: 'grid', l: 'Rejilla (automática)' }, { v: 'column', l: 'Vertical (una columna)' }, { v: 'row', l: 'Horizontal (una fila)' }], n.layout || 'grid')) +
-      '<button class="btn btn-danger btn-block danger-zone" data-role="delete">' + Icons.svg('trash', 14) + '<span>Eliminar grupo (los nodos se conservan)</span></button>';
+    wrap.innerHTML = field('Name', textInput('name', n.name, 'Optional'), 'Drag nodes onto the group to put them inside; it resizes by itself') +
+      field('Contents layout', selectHtml('layout', [{ v: 'grid', l: 'Grid (automatic)' }, { v: 'column', l: 'Vertical (one column)' }, { v: 'row', l: 'Horizontal (one row)' }], n.layout || 'grid')) +
+      '<button class="btn btn-danger btn-block danger-zone" data-role="delete">' + Icons.svg('trash', 14) + '<span>Delete group (its nodes are kept)</span></button>';
     bindFields(wrap, n, (key) => {
-      self.root.querySelector('.sp-name').textContent = n.name || 'Grupo';
+      self.root.querySelector('.sp-name').textContent = n.name || 'Group';
       self._changed(n.id, false, key === 'layout' ? false : undefined);
     });
     wrap.querySelector('[data-role="delete"]').addEventListener('click', () => self.onDeleteNode(n.id));
@@ -297,7 +297,7 @@
 
   Panel.prototype._openUrls = function (urls, anchor) {
     if (urls.length === 1) { window.open(urls[0].url, '_blank', 'noopener'); return; }
-    UI.menu(anchor, [{ header: 'Abrir panel' }].concat(urls.map((u) => ({ label: u.name, hint: u.url.replace(/^https?:\/\//, '').slice(0, 30), icon: 'externalLink', onClick: () => window.open(u.url, '_blank', 'noopener') }))), { alignRight: true });
+    UI.menu(anchor, [{ header: 'Open panel' }].concat(urls.map((u) => ({ label: u.name, hint: u.url.replace(/^https?:\/\//, '').slice(0, 30), icon: 'externalLink', onClick: () => window.open(u.url, '_blank', 'noopener') }))), { alignRight: true });
   };
 
   Panel.prototype._tabGeneral = function (n, state, ix) {
@@ -306,42 +306,42 @@
     wrap.className = 'details-pane';
     const typeOpts = CATEGORIES.map((c) => ({ group: c.label, items: Object.keys(NODE_TYPES).filter((k) => NODE_TYPES[k].cat === c.id).map((k) => ({ v: k, l: NODE_TYPES[k].label })) }));
     const blocked = new Set([n.id].concat(ix.descendants(n.id).map((d) => d.id)));
-    const hostOpts = [{ v: '', l: '(Nivel superior del mapa)' }].concat(state.nodes
+    const hostOpts = [{ v: '', l: '(Top level of the map)' }].concat(state.nodes
       .filter((x) => !blocked.has(x.id) && Model.typeMeta(x.type).canHost)
       .map((x) => ({ v: x.id, l: x.name ? x.name + ' (' + Model.typeMeta(x.type).label + ')' : Model.typeMeta(x.type).label })));
-    const groupOpts = [{ v: '', l: 'Sin grupo' }].concat(state.groups.map((g) => ({ v: g.id, l: g.name })));
+    const groupOpts = [{ v: '', l: 'No group' }].concat(state.groups.map((g) => ({ v: g.id, l: g.name })));
 
     const ispProvider = n.type === 'isp'
-      ? field('Proveedor', selectHtml('isp', [{ v: '', l: 'Selecciona un proveedor...' }].concat(ISP_PROVIDERS.map((p) => ({ v: p.id, l: p.name }))), n.isp)) +
-        field('Imagen personalizada', '<div class="isp-image-field">' +
+      ? field('Provider', selectHtml('isp', [{ v: '', l: 'Select a provider...' }].concat(ISP_PROVIDERS.map((p) => ({ v: p.id, l: p.name }))), n.isp)) +
+        field('Custom image', '<div class="isp-image-field">' +
           (n.ispImage ? '<img class="isp-image-preview" src="' + esc(n.ispImage) + '" alt="Logo"/>' : '<span class="isp-image-empty">' + Icons.svg('image', 16) + '</span>') +
-          '<div class="isp-image-actions"><button type="button" class="btn btn-ghost btn-sm" data-role="isp-image-pick">' + Icons.svg('upload', 13) + '<span>' + (n.ispImage ? 'Cambiar' : 'Subir imagen') + '</span></button>' +
-          (n.ispImage ? '<button type="button" class="icon-btn danger" data-role="isp-image-remove" title="Quitar imagen">' + Icons.svg('trash', 14) + '</button>' : '') + '</div>' +
-          '<input type="file" data-role="isp-image-input" accept="image/*" hidden/></div>', 'Sustituye la palabra "ISP" en el mapa por un logo')
+          '<div class="isp-image-actions"><button type="button" class="btn btn-ghost btn-sm" data-role="isp-image-pick">' + Icons.svg('upload', 13) + '<span>' + (n.ispImage ? 'Change' : 'Upload image') + '</span></button>' +
+          (n.ispImage ? '<button type="button" class="icon-btn danger" data-role="isp-image-remove" title="Remove image">' + Icons.svg('trash', 14) + '</button>' : '') + '</div>' +
+          '<input type="file" data-role="isp-image-input" accept="image/*" hidden/></div>', 'Replaces the word "ISP" on the map with a logo')
       : '';
 
     wrap.innerHTML =
-      field('Nombre', textInput('name', n.name, 'Nombre del dispositivo')) +
-      '<div class="field-row">' + field('Tipo', selectHtml('type', typeOpts, n.type)) +
-        field('Alojado en', selectHtml('parentId', hostOpts, n.parentId || '')) + '</div>' +
-      '<div class="field-row">' + field('Sistema operativo', textInput('os', n.os, 'OpenWrt, Debian 12...')) +
+      field('Name', textInput('name', n.name, 'Device name')) +
+      '<div class="field-row">' + field('Type', selectHtml('type', typeOpts, n.type)) +
+        field('Hosted on', selectHtml('parentId', hostOpts, n.parentId || '')) + '</div>' +
+      '<div class="field-row">' + field('Operating system', textInput('os', n.os, 'OpenWrt, Debian 12...')) +
         field('Modelo', textInput('model', n.model, 'UniFi Dream Router...')) + '</div>' +
       ispProvider +
-      field('Función', textInput('role', n.role, 'Gateway, DNS, NextCloud...'), 'Etiqueta de color en el nodo') +
-      field('Etiquetas', '<input type="text" data-role="tags" value="' + esc(n.tags.join(', ')) + '" placeholder="produccion, wifi, laboratorio" autocomplete="off"/>', 'Separadas por comas') +
-      (n.parentId || !state.groups.length ? '' : field('Grupo (antiguo)', selectHtml('groupId', groupOpts, n.groupId), 'Los grupos nuevos son tarjetas: arrastra el nodo dentro de un Grupo')) +
-      field('Notas', '<textarea data-f="notes" rows="4" placeholder="Notas libres">' + esc(n.notes) + '</textarea>') +
-      section('Campos personalizados', 'No guardes contraseñas aquí. Anota dónde está la credencial (p. ej. "Bitwarden: Router casa").') +
+      field('Role', textInput('role', n.role, 'Gateway, DNS, NextCloud...'), 'Colour tag on the node') +
+      field('Tags', '<input type="text" data-role="tags" value="' + esc(n.tags.join(', ')) + '" placeholder="production, wifi, lab" autocomplete="off"/>', 'Comma separated') +
+      (n.parentId || !state.groups.length ? '' : field('Group (legacy)', selectHtml('groupId', groupOpts, n.groupId), 'New groups are cards: drag the node into a Group')) +
+      field('Notes', '<textarea data-f="notes" rows="4" placeholder="Free notes">' + esc(n.notes) + '</textarea>') +
+      section('Custom fields', 'Do not store passwords here. Note where the credential is kept (e.g. "Bitwarden: Home router").') +
       '<div class="kv-list" data-role="fields"></div>' +
-      '<button class="btn btn-ghost btn-block" data-role="add-field">' + Icons.svg('plus', 14) + '<span>Añadir campo</span></button>' +
-      '<button class="btn btn-danger btn-block danger-zone" data-role="delete">' + Icons.svg('trash', 14) + '<span>Eliminar</span></button>';
+      '<button class="btn btn-ghost btn-block" data-role="add-field">' + Icons.svg('plus', 14) + '<span>Add field</span></button>' +
+      '<button class="btn btn-danger btn-block danger-zone" data-role="delete">' + Icons.svg('trash', 14) + '<span>Delete</span></button>';
 
     let lastType = n.type;
     const lastParent = n.parentId || null;
     bindFields(wrap, n, (key, value) => {
       if (key === 'type') {
         if (!Model.typeMeta(value).canHost && ix.children(n.id).length) {
-          UI.toast('Este nodo contiene elementos: "' + Model.typeMeta(value).label + '" no puede alojarlos.', 'error');
+          UI.toast('This node contains items: "' + Model.typeMeta(value).label + '" cannot host them.', 'error');
           n.type = lastType;
           self._render();
           return;
@@ -357,7 +357,7 @@
         }
         n.parentId = lastParent;
         if (!Model.setParent(state, n.id, target, place)) {
-          UI.toast('Un nodo no puede alojarse dentro de sí mismo, de su contenido o de un tipo que no admite contenido.', 'error');
+          UI.toast('A node cannot be hosted inside itself, inside its own contents or inside a type that does not accept contents.', 'error');
           self._render();
           return;
         }
@@ -387,8 +387,8 @@
     n.fields.forEach((f, idx) => {
       const row = document.createElement('div');
       row.className = 'kv-row';
-      row.innerHTML = '<input type="text" data-k placeholder="Campo" value="' + esc(f.k) + '"/><input type="text" data-v placeholder="Valor" value="' + esc(f.v) + '"/>' +
-        '<button class="icon-btn danger" title="Quitar">' + Icons.svg('close', 13) + '</button>';
+      row.innerHTML = '<input type="text" data-k placeholder="Field" value="' + esc(f.k) + '"/><input type="text" data-v placeholder="Value" value="' + esc(f.v) + '"/>' +
+        '<button class="icon-btn danger" title="Remove">' + Icons.svg('close', 13) + '</button>';
       row.querySelector('[data-k]').addEventListener('input', (e) => { f.k = e.target.value; self._changed(n.id, false, 'node:' + n.id + ':fields'); });
       row.querySelector('[data-v]').addEventListener('input', (e) => { f.v = e.target.value; self._changed(n.id, false, 'node:' + n.id + ':fields'); });
       row.querySelector('button').addEventListener('click', () => { n.fields.splice(idx, 1); self._changed(n.id, true); });
@@ -420,13 +420,13 @@
     wrap.className = 'details-pane';
     const isSwitchLike = ['switch', 'ap', 'router', 'firewall', 'modem'].includes(n.type);
     wrap.innerHTML =
-      '<div class="hint-line">Pulsa el icono de una interfaz para ver MAC, VLAN, gateway, red, bridge y más.</div>' +
+      '<div class="hint-line">Click an interface icon to see MAC, VLAN, gateway, network, bridge and more.</div>' +
       '<div class="iface-list" data-role="list"></div>' +
-      '<div class="add-row"><button class="btn btn-ghost" data-role="add">' + Icons.svg('plus', 14) + '<span>Añadir interfaz</span></button>' +
-      (isSwitchLike ? '<button class="btn btn-ghost" data-role="ports">' + Icons.svg('port', 14) + '<span>Generar puertos...</span></button>' : '') + '</div>';
+      '<div class="add-row"><button class="btn btn-ghost" data-role="add">' + Icons.svg('plus', 14) + '<span>Add interface</span></button>' +
+      (isSwitchLike ? '<button class="btn btn-ghost" data-role="ports">' + Icons.svg('port', 14) + '<span>Generate ports...</span></button>' : '') + '</div>';
     const list = wrap.querySelector('[data-role="list"]');
     n.interfaces.forEach((i) => list.appendChild(self._ifaceCard(n, i, state, ix)));
-    if (!n.interfaces.length) list.innerHTML = '<div class="field-note">Este nodo no tiene interfaces. Añade una para poder conectarlo.</div>';
+    if (!n.interfaces.length) list.innerHTML = '<div class="field-note">This node has no interfaces. Add one to be able to connect it.</div>';
 
     wrap.querySelector('[data-role="add"]').addEventListener('click', (e) => {
       UI.menu(e.currentTarget, Object.keys(IFACE_KINDS).filter((k) => k !== 'tunnel').map((k) => ({
@@ -442,7 +442,7 @@
     });
     const portsBtn = wrap.querySelector('[data-role="ports"]');
     if (portsBtn) portsBtn.addEventListener('click', () => {
-      UI.prompt({ title: 'Generar puertos', label: 'Número de puertos (1-96)', value: '8', confirmLabel: 'Generar', onConfirm: (v) => {
+      UI.prompt({ title: 'Generate ports', label: 'Number of ports (1-96)', value: '8', confirmLabel: 'Generate', onConfirm: (v) => {
         const count = Math.max(1, Math.min(96, parseInt(v, 10) || 0));
         const have = new Set(n.interfaces.map((i) => i.name));
         let added = 0;
@@ -453,7 +453,7 @@
           n.interfaces.push(i);
           added++;
         }
-        UI.toast(added + ' puertos añadidos.', 'success');
+        UI.toast(added + ' ports added.', 'success');
         self._changed(n.id, true);
       } });
     });
@@ -473,41 +473,41 @@
       return (o ? o.name : '?') + (oi && oi.name ? ' (' + oi.name + ')' : '');
     });
 
-    const parentOpts = [{ v: '', l: 'Ninguno' }];
+    const parentOpts = [{ v: '', l: 'None' }];
     const par = ix.parent(n.id);
-    if (par) par.interfaces.filter((x) => x.kind !== 'tunnel').forEach((x) => parentOpts.push({ v: x.id, l: par.name + ': ' + (x.name || '(sin nombre)') + (x.ip ? ' - ' + x.ip : '') }));
-    n.interfaces.filter((x) => x.id !== iface.id && (x.kind === 'bridge' || x.kind === 'bond')).forEach((x) => parentOpts.push({ v: x.id, l: 'Este nodo: ' + (x.name || '(sin nombre)') }));
+    if (par) par.interfaces.filter((x) => x.kind !== 'tunnel').forEach((x) => parentOpts.push({ v: x.id, l: par.name + ': ' + (x.name || '(unnamed)') + (x.ip ? ' - ' + x.ip : '') }));
+    n.interfaces.filter((x) => x.id !== iface.id && (x.kind === 'bridge' || x.kind === 'bond')).forEach((x) => parentOpts.push({ v: x.id, l: 'This node: ' + (x.name || '(unnamed)') }));
 
     const netOpts = state.networks.map((x) => ({ v: x.id, l: x.name + (x.cidr && x.cidr !== x.name ? ' (' + x.cidr + ')' : '') }));
     // With DHCP the address is not known, so the network it belongs to is chosen here and the node still shows up in it.
     const dhcpLine = iface.mode === 'dhcp' && iface.kind !== 'tunnel'
-      ? '<div class="iface-dhcp"><span>Red que le da el DHCP</span>' +
-        selectHtml('networkId', [{ v: '', l: state.networks.length ? 'Sin asignar' : 'No hay redes: créalas en Redes' }].concat(netOpts), iface.networkId) + '</div>'
+      ? '<div class="iface-dhcp"><span>Network that gives it DHCP</span>' +
+        selectHtml('networkId', [{ v: '', l: state.networks.length ? 'Unassigned' : 'No networks: create them under Networks' }].concat(netOpts), iface.networkId) + '</div>'
       : '';
     const details = !open ? '' :
       '<div class="iface-details">' +
-        '<div class="field-row">' + field('Tipo', selectHtml('kind', Object.keys(IFACE_KINDS).map((k) => ({ v: k, l: IFACE_KINDS[k].label })), iface.kind)) +
+        '<div class="field-row">' + field('Type', selectHtml('kind', Object.keys(IFACE_KINDS).map((k) => ({ v: k, l: IFACE_KINDS[k].label })), iface.kind)) +
           field('MAC', textInput('mac', iface.mac, 'aa:bb:cc:dd:ee:ff', 'mono')) + '</div>' +
         '<div class="field-row">' + field('Gateway', textInput('gateway', iface.gateway, '192.168.1.1', 'mono')) +
           field('VLAN', textInput('vlan', iface.vlan, 'ej. 10 o 10,20,30')) + '</div>' +
-        '<div class="field-row">' + (iface.mode === 'dhcp' ? '' : field('Red', selectHtml('networkId', [{ v: '', l: 'Automática (según su IP)' }].concat(netOpts), iface.networkId))) +
-          field('Velocidad', selectHtml('speed', [{ v: '', l: '-' }].concat(SPEEDS.map((s) => ({ v: s, l: s }))), iface.speed)) + '</div>' +
-        (iface.kind === 'wifi' ? '<div class="field-row">' + field('SSID', textInput('ssid', iface.ssid, 'Nombre de la red Wi-Fi')) +
-          field('Rol', selectHtml('wifiRole', [{ v: '', l: '-' }, { v: 'ap', l: 'Punto de acceso' }, { v: 'client', l: 'Cliente' }], iface.wifiRole)) + '</div>' : '') +
-        (iface.kind === 'tunnel' ? '<div class="field-row">' + field('Overlay', selectHtml('overlayId', [{ v: '', l: '(ninguno)' }].concat(state.overlays.map((o) => ({ v: o.id, l: o.name }))), iface.overlayId)) +
-          field('Rutas anunciadas', textInput('routes', iface.routes, '192.168.25.0/24', 'mono'), 'Subnet router: redes que alcanza a través de este túnel') + '</div>' : '') +
-        field(iface.parent ? 'Cuelga de (bridge / padre)' : 'Bridge / padre', selectHtml('parent', parentOpts, iface.parent), 'Si cuelga de un bridge, no necesita cable propio en el mapa: usa el del bridge') +
-        '<label class="checkbox-row"><input type="checkbox" data-f="shared"' + (iface.shared ? ' checked' : '') + '/><span>IP virtual compartida (VRRP / HSRP): no avisar de duplicados</span></label>' +
-        (connections.length ? '<div class="field-note">Conectada a: ' + esc(connections.join(', ')) + '</div>' : '<div class="field-note">Sin cable conectado.</div>') +
+        '<div class="field-row">' + (iface.mode === 'dhcp' ? '' : field('Network', selectHtml('networkId', [{ v: '', l: 'Automatic (from its IP)' }].concat(netOpts), iface.networkId))) +
+          field('Speed', selectHtml('speed', [{ v: '', l: '-' }].concat(SPEEDS.map((s) => ({ v: s, l: s }))), iface.speed)) + '</div>' +
+        (iface.kind === 'wifi' ? '<div class="field-row">' + field('SSID', textInput('ssid', iface.ssid, 'Wi-Fi network name')) +
+          field('Role', selectHtml('wifiRole', [{ v: '', l: '-' }, { v: 'ap', l: 'Access point' }, { v: 'client', l: 'Client' }], iface.wifiRole)) + '</div>' : '') +
+        (iface.kind === 'tunnel' ? '<div class="field-row">' + field('Overlay', selectHtml('overlayId', [{ v: '', l: '(none)' }].concat(state.overlays.map((o) => ({ v: o.id, l: o.name }))), iface.overlayId)) +
+          field('Advertised routes', textInput('routes', iface.routes, '192.168.25.0/24', 'mono'), 'Subnet router: networks reachable through this tunnel') + '</div>' : '') +
+        field(iface.parent ? 'Child of (bridge / parent)' : 'Bridge / parent', selectHtml('parent', parentOpts, iface.parent), 'If it hangs from a bridge it needs no cable of its own on the map: it uses the one of the bridge') +
+        '<label class="checkbox-row"><input type="checkbox" data-f="shared"' + (iface.shared ? ' checked' : '') + '/><span>Shared virtual IP (VRRP / HSRP): do not warn about duplicates</span></label>' +
+        (connections.length ? '<div class="field-note">Connected to: ' + esc(connections.join(', ')) + '</div>' : '<div class="field-note">No cable connected.</div>') +
       '</div>';
 
     el.innerHTML =
       '<div class="iface-main">' +
-        '<button type="button" class="icon-btn iface-expand' + (open ? ' active' : '') + '" data-act="expand" title="Detalles">' + Icons.svg(kind.icon, 15) + '</button>' +
-        '<input type="text" data-f="name" class="iface-name" value="' + esc(iface.name) + '" placeholder="Nombre" autocomplete="off" spellcheck="false"/>' +
-        '<input type="text" data-f="ip" class="iface-ip' + (looksLikeBadIp(iface.ip) ? ' invalid' : '') + '" value="' + esc(iface.ip) + '" placeholder="' + (iface.mode === 'dhcp' ? 'IP asignada (opcional)' : 'IP o IP/24') + '" autocomplete="off" spellcheck="false"/>' +
+        '<button type="button" class="icon-btn iface-expand' + (open ? ' active' : '') + '" data-act="expand" title="Details">' + Icons.svg(kind.icon, 15) + '</button>' +
+        '<input type="text" data-f="name" class="iface-name" value="' + esc(iface.name) + '" placeholder="Name" autocomplete="off" spellcheck="false"/>' +
+        '<input type="text" data-f="ip" class="iface-ip' + (looksLikeBadIp(iface.ip) ? ' invalid' : '') + '" value="' + esc(iface.ip) + '" placeholder="' + (iface.mode === 'dhcp' ? 'Assigned IP (optional)' : 'IP o IP/24') + '" autocomplete="off" spellcheck="false"/>' +
         selectHtml('mode', Object.keys(IP_MODES).map((k) => ({ v: k, l: IP_MODES[k] })), iface.mode, 'iface-mode') +
-        '<button type="button" class="icon-btn danger" data-act="del" title="Eliminar interfaz">' + Icons.svg('close', 13) + '</button>' +
+        '<button type="button" class="icon-btn danger" data-act="del" title="Delete interface">' + Icons.svg('close', 13) + '</button>' +
       '</div>' + dhcpLine + details;
 
     el.querySelector('[data-act="expand"]').addEventListener('click', () => {
@@ -540,10 +540,10 @@
     const wrap = document.createElement('div');
     wrap.className = 'details-pane';
     wrap.innerHTML =
-      '<div class="hint-line">Cada servicio con URL aparece como acceso directo en el mapa y en la vista Paneles.</div>' +
+      '<div class="hint-line">Each service with a URL appears as a shortcut on the map and in the Panels view.</div>' +
       '<div class="svc-list" data-role="list"></div>' +
-      '<button class="btn btn-ghost btn-block" data-role="add">' + Icons.svg('plus', 14) + '<span>Añadir servicio</span></button>' +
-      section('Añadir rápido', 'Rellena puerto y URL con la IP de este nodo') +
+      '<button class="btn btn-ghost btn-block" data-role="add">' + Icons.svg('plus', 14) + '<span>Add service</span></button>' +
+      section('Quick add', 'Fills in port and URL with the IP of this node') +
       '<div class="preset-chips" data-role="presets"></div>';
     const list = wrap.querySelector('[data-role="list"]');
     n.services.forEach((s) => {
@@ -551,12 +551,12 @@
       row.className = 'svc-card';
       const bad = s.url && !Model.serviceUrl(s);
       row.innerHTML =
-        '<div class="svc-card-main"><input type="text" data-f="name" value="' + esc(s.name) + '" placeholder="Servicio" autocomplete="off"/>' +
-        '<input type="text" data-f="port" class="svc-port-in" value="' + esc(s.port) + '" placeholder="Puerto" autocomplete="off"/>' +
+        '<div class="svc-card-main"><input type="text" data-f="name" value="' + esc(s.name) + '" placeholder="Service" autocomplete="off"/>' +
+        '<input type="text" data-f="port" class="svc-port-in" value="' + esc(s.port) + '" placeholder="Port" autocomplete="off"/>' +
         selectHtml('proto', [{ v: 'tcp', l: 'TCP' }, { v: 'udp', l: 'UDP' }, { v: '', l: '-' }], s.proto, 'svc-proto') +
-        '<button class="icon-btn danger" data-act="del" title="Quitar">' + Icons.svg('close', 13) + '</button></div>' +
+        '<button class="icon-btn danger" data-act="del" title="Remove">' + Icons.svg('close', 13) + '</button></div>' +
         '<div class="svc-card-url"><input type="text" data-f="url" class="mono' + (bad ? ' invalid' : '') + '" value="' + esc(s.url) + '" placeholder="https://192.168.1.1:8443" autocomplete="off" spellcheck="false"/>' +
-        '<button class="icon-btn" data-act="open" title="Abrir"' + (Model.serviceUrl(s) ? '' : ' disabled') + '>' + Icons.svg('externalLink', 14) + '</button></div>';
+        '<button class="icon-btn" data-act="open" title="Open"' + (Model.serviceUrl(s) ? '' : ' disabled') + '>' + Icons.svg('externalLink', 14) + '</button></div>';
       bindFields(row, s, (key, value, el) => {
         if (key === 'url') {
           const invalid = !!value.trim() && !Model.serviceUrl(s);
@@ -569,7 +569,7 @@
       row.querySelector('[data-act="open"]').addEventListener('click', () => { const u = Model.serviceUrl(s); if (u) window.open(u, '_blank', 'noopener'); });
       list.appendChild(row);
     });
-    if (!n.services.length) list.innerHTML = '<div class="field-note">Sin servicios todavía.</div>';
+    if (!n.services.length) list.innerHTML = '<div class="field-note">No services yet.</div>';
     wrap.querySelector('[data-role="add"]').addEventListener('click', () => { n.services.push(Factory.service('', '')); self._changed(n.id, true); });
 
     const chips = wrap.querySelector('[data-role="presets"]');
@@ -599,10 +599,10 @@
     const kids = ix.children(n.id);
     const canHost = Model.typeMeta(n.type).canHost;
     wrap.innerHTML =
-      (canHost ? '<div class="hint-line">Añade máquinas virtuales o contenedores. También puedes arrastrar un tipo "Virtual" desde la biblioteca sobre este nodo.</div>' : '<div class="field-note">Este tipo de nodo no puede alojar elementos.</div>') +
+      (canHost ? '<div class="hint-line">Add virtual machines or containers. You can also drag a "Virtual" type from the library onto this node.</div>' : '<div class="field-note">This node type cannot host items.</div>') +
       '<div class="child-list" data-role="list"></div>' +
       (canHost ? '<div class="add-row" data-role="add-row"></div>' : '') +
-      (kids.length ? '<label class="checkbox-row"><input type="checkbox" data-f="collapsed"' + (n.collapsed ? ' checked' : '') + '/><span>Mostrar colapsado en el mapa (un solo resumen)</span></label>' : '');
+      (kids.length ? '<label class="checkbox-row"><input type="checkbox" data-f="collapsed"' + (n.collapsed ? ' checked' : '') + '/><span>Show collapsed on the map (single summary)</span></label>' : '');
     const list = wrap.querySelector('[data-role="list"]');
     kids.forEach((c) => {
       const meta = Model.typeMeta(c.type);
@@ -615,7 +615,7 @@
       row.addEventListener('click', () => self.onRequestSelect(c.id));
       list.appendChild(row);
     });
-    if (!kids.length) list.innerHTML = '<div class="field-note">Todavía no contiene nada.</div>';
+    if (!kids.length) list.innerHTML = '<div class="field-note">It contains nothing yet.</div>';
     const addRow = wrap.querySelector('[data-role="add-row"]');
     if (addRow) CHILD_TYPE_IDS.forEach((t) => {
       const b = document.createElement('button');
@@ -643,10 +643,10 @@
     const wrap = document.createElement('div');
     wrap.className = 'details-pane';
     wrap.innerHTML =
-      '<div class="hint-line">Un overlay (Tailscale, WireGuard...) es una red virtual. Pertenecer a uno crea una interfaz de túnel en este nodo.</div>' +
+      '<div class="hint-line">An overlay (Tailscale, WireGuard...) is a virtual network. Joining one creates a tunnel interface on this node.</div>' +
       '<div class="ov-list" data-role="list"></div>' +
-      section('Nuevo overlay') +
-      '<div class="add-vpn-row"><input type="text" data-role="new-name" placeholder="Nombre (Tailscale, WireGuard...)"/><input type="color" data-role="new-color" value="#2ad9b8" title="Color"/>' +
+      section('New overlay') +
+      '<div class="add-vpn-row"><input type="text" data-role="new-name" placeholder="Name (Tailscale, WireGuard...)"/><input type="color" data-role="new-color" value="#2ad9b8" title="Color"/>' +
       '<button type="button" class="btn btn-ghost" data-role="add">' + Icons.svg('plus', 14) + '<span>Crear</span></button></div>';
     const list = wrap.querySelector('[data-role="list"]');
     state.overlays.forEach((ov) => {
@@ -656,9 +656,9 @@
       row.style.setProperty('--vpn-color', ov.color);
       row.innerHTML =
         '<label class="ov-head"><input type="checkbox"' + (t ? ' checked' : '') + '/><span class="vpn-swatch"></span><span class="vpn-name">' + esc(ov.name) + '</span>' +
-        '<button type="button" class="icon-btn" data-act="open" title="Editar overlay">' + Icons.svg('edit', 13) + '</button></label>' +
-        (t ? '<div class="ov-fields"><input type="text" data-f="ip" class="mono" value="' + esc(t.ip || (t.mode === 'dhcp' ? 'DHCP' : '')) + '" placeholder="IP en el overlay (100.64.0.5)"/>' +
-          '<input type="text" data-f="routes" class="mono" value="' + esc(t.routes) + '" placeholder="Rutas anunciadas (192.168.25.0/24)" title="Si es subnet router: redes que anuncia"/></div>' : '');
+        '<button type="button" class="icon-btn" data-act="open" title="Edit overlay">' + Icons.svg('edit', 13) + '</button></label>' +
+        (t ? '<div class="ov-fields"><input type="text" data-f="ip" class="mono" value="' + esc(t.ip || (t.mode === 'dhcp' ? 'DHCP' : '')) + '" placeholder="IP in the overlay (100.64.0.5)"/>' +
+          '<input type="text" data-f="routes" class="mono" value="' + esc(t.routes) + '" placeholder="Advertised routes (192.168.25.0/24)" title="If it is a subnet router: networks it advertises"/></div>' : '');
       row.querySelector('input[type="checkbox"]').addEventListener('change', (e) => {
         if (e.target.checked) {
           const i = Factory.iface(ov.name.toLowerCase().replace(/[^a-z0-9]+/g, '') + '0', 'tunnel');
@@ -684,7 +684,7 @@
       }
       list.appendChild(row);
     });
-    if (!state.overlays.length) list.innerHTML = '<div class="field-note">Todavía no hay overlays. Crea el primero abajo.</div>';
+    if (!state.overlays.length) list.innerHTML = '<div class="field-note">No overlays yet. Create the first one below.</div>';
     wrap.querySelector('[data-role="add"]').addEventListener('click', () => {
       const nameInput = wrap.querySelector('[data-role="new-name"]');
       const name = nameInput.value.trim();
@@ -709,29 +709,29 @@
     if (!l) return false;
     const a = ix.get(l.a.nodeId), b = ix.get(l.b.nodeId);
     if (!a || !b) return false;
-    this._header({ html: Icons.svg('link', 18) }, 'Conexión', a.name + ' / ' + b.name, {
-      actions: [{ icon: 'swap', title: 'Intercambiar extremos', onClick: () => { const t = l.a; l.a = l.b; l.b = t; self.commit('link-swap'); self.onChanged({ links: true }); self._render(); } },
-        { icon: 'trash', title: 'Eliminar conexión', danger: true, onClick: () => self.onDeleteLink(l.id) }]
+    this._header({ html: Icons.svg('link', 18) }, 'Connection', a.name + ' / ' + b.name, {
+      actions: [{ icon: 'swap', title: 'Swap ends', onClick: () => { const t = l.a; l.a = l.b; l.b = t; self.commit('link-swap'); self.onChanged({ links: true }); self._render(); } },
+        { icon: 'trash', title: 'Delete connection', danger: true, onClick: () => self.onDeleteLink(l.id) }]
     });
     this._setTabs(null);
-    const ifaceOpts = (node, current) => node.interfaces.map((i) => ({ v: i.id, l: (i.name || '(sin nombre)') + (i.ip ? ' - ' + i.ip : i.mode === 'dhcp' ? ' - DHCP' : '') }))
-      .concat(current ? [] : [{ v: '', l: '(sin interfaz)' }]);
+    const ifaceOpts = (node, current) => node.interfaces.map((i) => ({ v: i.id, l: (i.name || '(unnamed)') + (i.ip ? ' - ' + i.ip : i.mode === 'dhcp' ? ' - DHCP' : '') }))
+      .concat(current ? [] : [{ v: '', l: '(no interface)' }]);
     const wrap = document.createElement('div');
     wrap.className = 'details-pane';
     wrap.innerHTML =
       '<div class="link-ends">' +
         '<div class="link-end"><button type="button" class="member-row" data-node="' + esc(a.id) + '"><span class="member-name">' + esc(a.name) + '</span></button>' +
-          (Model.typeMeta(a.type).noIface ? '' : field('Interfaz', '<select data-end="a">' + ifaceOpts(a, true).map((o) => '<option value="' + esc(o.v) + '"' + (o.v === l.a.ifaceId ? ' selected' : '') + '>' + esc(o.l) + '</option>').join('') + '</select>')) + '</div>' +
+          (Model.typeMeta(a.type).noIface ? '' : field('Interface', '<select data-end="a">' + ifaceOpts(a, true).map((o) => '<option value="' + esc(o.v) + '"' + (o.v === l.a.ifaceId ? ' selected' : '') + '>' + esc(o.l) + '</option>').join('') + '</select>')) + '</div>' +
         '<div class="link-end"><button type="button" class="member-row" data-node="' + esc(b.id) + '"><span class="member-name">' + esc(b.name) + '</span></button>' +
-          (Model.typeMeta(b.type).noIface ? '' : field('Interfaz', '<select data-end="b">' + ifaceOpts(b, true).map((o) => '<option value="' + esc(o.v) + '"' + (o.v === l.b.ifaceId ? ' selected' : '') + '>' + esc(o.l) + '</option>').join('') + '</select>')) + '</div>' +
+          (Model.typeMeta(b.type).noIface ? '' : field('Interface', '<select data-end="b">' + ifaceOpts(b, true).map((o) => '<option value="' + esc(o.v) + '"' + (o.v === l.b.ifaceId ? ' selected' : '') + '>' + esc(o.l) + '</option>').join('') + '</select>')) + '</div>' +
       '</div>' +
-      '<div class="field-row">' + field('Medio', selectHtml('medium', Object.keys(MEDIA).map((k) => ({ v: k, l: MEDIA[k].label })), l.medium)) +
-        field('Velocidad', selectHtml('speed', [{ v: '', l: '-' }].concat(SPEEDS.map((s) => ({ v: s, l: s }))), l.speed)) + '</div>' +
-      field('Etiqueta', textInput('label', l.label, 'Troncal, Uplink, Backhaul...'), 'Se muestra sobre el cable') +
-      (l.medium === 'wifi' ? field('SSID', textInput('ssid', l.ssid, 'Nombre de la red Wi-Fi')) : '') +
-      field('VLANs', textInput('vlans', l.vlans, 'trunk 10,20,30 o access 10'), 'Opcional, se muestra sobre el cable') +
-      field('Notas', '<textarea data-f="notes" rows="3" placeholder="Cable, roseta, longitud...">' + esc(l.notes) + '</textarea>') +
-      '<button class="btn btn-danger btn-block danger-zone" data-role="delete">' + Icons.svg('trash', 14) + '<span>Eliminar conexión</span></button>';
+      '<div class="field-row">' + field('Medium', selectHtml('medium', Object.keys(MEDIA).map((k) => ({ v: k, l: MEDIA[k].label })), l.medium)) +
+        field('Speed', selectHtml('speed', [{ v: '', l: '-' }].concat(SPEEDS.map((s) => ({ v: s, l: s }))), l.speed)) + '</div>' +
+      field('Label', textInput('label', l.label, 'Trunk, Uplink, Backhaul...'), 'Shown over the cable') +
+      (l.medium === 'wifi' ? field('SSID', textInput('ssid', l.ssid, 'Wi-Fi network name')) : '') +
+      field('VLANs', textInput('vlans', l.vlans, 'trunk 10,20,30 or access 10'), 'Optional, shown over the cable') +
+      field('Notes', '<textarea data-f="notes" rows="3" placeholder="Cable, wall socket, length...">' + esc(l.notes) + '</textarea>') +
+      '<button class="btn btn-danger btn-block danger-zone" data-role="delete">' + Icons.svg('trash', 14) + '<span>Delete connection</span></button>';
     bindFields(wrap, l, (key) => {
       self.commit('link:' + l.id + ':' + key);
       self.onChanged({ links: true });
@@ -756,17 +756,17 @@
     const g = state.groups.find((x) => x.id === this.target.id);
     if (!g) return false;
     const members = state.nodes.filter((n) => n.groupId === g.id);
-    this._header({ html: Icons.svg('group', 18), color: g.color, bg: g.color + '26' }, g.name || 'Grupo', 'Grupo · ' + members.length + (members.length === 1 ? ' nodo' : ' nodos'), {});
+    this._header({ html: Icons.svg('group', 18), color: g.color, bg: g.color + '26' }, g.name || 'Group', 'Group · ' + members.length + (members.length === 1 ? ' node' : ' nodes'), {});
     this._setTabs(null);
     const wrap = document.createElement('div');
     wrap.className = 'details-pane';
     wrap.innerHTML =
-      field('Nombre', textInput('name', g.name, 'Planta 1, Rack, Oficina...')) +
+      field('Name', textInput('name', g.name, 'Floor 1, Rack, Office...')) +
       field('Color', '<input type="color" data-f="color" value="' + esc(g.color) + '"/>') +
-      '<label class="checkbox-row"><input type="checkbox" data-role="collapsed"' + (g.collapsed ? ' checked' : '') + '/><span>Colapsar en una sola tarjeta</span></label>' +
-      section('Nodos del grupo') +
+      '<label class="checkbox-row"><input type="checkbox" data-role="collapsed"' + (g.collapsed ? ' checked' : '') + '/><span>Collapse into a single card</span></label>' +
+      section('Group nodes') +
       '<div class="member-list">' + members.map((n) => '<button type="button" class="member-row" data-node="' + esc(n.id) + '"><span class="member-name">' + esc(n.name) + '</span><span class="member-iface">' + esc(Model.typeMeta(n.type).label) + '</span></button>').join('') + '</div>' +
-      '<button class="btn btn-ghost btn-block" data-role="ungroup">' + Icons.svg('group', 14) + '<span>Disolver grupo (los nodos se conservan)</span></button>';
+      '<button class="btn btn-ghost btn-block" data-role="ungroup">' + Icons.svg('group', 14) + '<span>Dissolve group (its nodes are kept)</span></button>';
     bindFields(wrap, g, (key) => {
       self.commit('group:' + g.id + ':' + key);
       self.root.querySelector('.sp-name').textContent = g.name;
@@ -793,14 +793,14 @@
     const self = this;
     const net = state.networks.find((x) => x.id === this.target.id);
     if (!net) return false;
-    this._header({ html: Icons.svg('subnet', 18), color: net.color, bg: net.color + '26' }, net.name, 'Red' + (net.cidr ? ' · ' + net.cidr : ''), {});
+    this._header({ html: Icons.svg('subnet', 18), color: net.color, bg: net.color + '26' }, net.name, 'Network' + (net.cidr ? ' · ' + net.cidr : ''), {});
     this._setTabs(null);
     this.body.innerHTML = '';
     this.body.appendChild(networkForm(state, net, {
       onChange: (key) => {
         self.commit('net:' + net.id + ':' + key);
         self.root.querySelector('.sp-name').textContent = net.name;
-        self.root.querySelector('.sp-type').textContent = 'Red' + (net.cidr ? ' · ' + net.cidr : '');
+        self.root.querySelector('.sp-type').textContent = 'Network' + (net.cidr ? ' · ' + net.cidr : '');
         self.onChanged({ data: true });
       },
       onSelectNode: (id) => self.onRequestSelect(id),

@@ -359,7 +359,7 @@
       return o ? '<span class="vpn-ip" style="color:' + o.color + '" title="' + esc(o.name) + '">' + esc(i.ip || 'DHCP') + '</span>' : '';
     }).join('');
     const overlayHtml = overlayIps ? '<div class="vpn-ip-labels">' + overlayIps + '</div>' : '';
-    const dots = SIDES.map((s) => '<button type="button" class="anchor-dot anchor-dot--' + s + '" data-side="' + s + '" title="Arrastra para crear una conexión" tabindex="-1"></button>').join('');
+    const dots = SIDES.map((s) => '<button type="button" class="anchor-dot anchor-dot--' + s + '" data-side="' + s + '" title="Drag to create a connection" tabindex="-1"></button>').join('');
     const cls = (ring ? ' has-vpn' : '') + (overlayIps ? ' has-vpn-ips' : '');
 
     if (isIsp) {
@@ -377,7 +377,7 @@
 
     el.className = (depth === 0 ? 'node' : 'node-child') + ' type-' + meta.group + ' device-' + n.type + cls +
       (meta.endpoint ? ' is-endpoint' : '') + (gateway ? ' is-gateway' : '');
-    if (gateway) el.title = 'Gateway: pertenece a ' + nets.map((x) => x.name).join(' y ');
+    if (gateway) el.title = 'Gateway: belongs to ' + nets.map((x) => x.name).join(' y ');
     if (ring) el.style.setProperty('--vpn-ring', ring);
 
     const roleColor = n.role ? UI.colorForText(n.role) : null;
@@ -400,10 +400,10 @@
         ? '<div class="node-services">' + n.services.slice(0, 6).map((s) => {
             const u = Model.serviceUrl(s);
             return '<div class="svc-row' + (u ? ' has-url' : '') + '"' + (u ? ' data-act="open" data-url="' + esc(u) + '" title="' + esc(u) + '"' : '') + '>' +
-              '<span class="svc-name">' + esc(s.name || 'Servicio') + '</span>' + (s.port ? '<span class="svc-port">' + esc(s.port) + '</span>' : '') +
+              '<span class="svc-name">' + esc(s.name || 'Service') + '</span>' + (s.port ? '<span class="svc-port">' + esc(s.port) + '</span>' : '') +
               (u ? Icons.svg('externalLink', 11) : '') + '</div>';
-          }).join('') + (n.services.length > 6 ? '<div class="svc-more">+' + (n.services.length - 6) + ' más</div>' : '') + '</div>'
-        : '<div class="svc-empty">Sin servicios</div>';
+          }).join('') + (n.services.length > 6 ? '<div class="svc-more">+' + (n.services.length - 6) + ' more</div>' : '') + '</div>'
+        : '<div class="svc-empty">No services</div>';
     }
 
     let foot = '';
@@ -412,7 +412,7 @@
     } else if (urls.length === 1) {
       foot = '<button type="button" class="panel-badge" data-act="open" data-url="' + esc(urls[0].url) + '" title="' + esc(urls[0].name + ' - ' + urls[0].url) + '">' + Icons.svg('externalLink', 11) + esc(urls[0].name.length > 14 ? 'Panel' : urls[0].name) + '</button>';
     } else if (urls.length > 1) {
-      foot = '<button type="button" class="panel-badge" data-act="menu" title="Abrir un panel">' + Icons.svg('externalLink', 11) + 'Paneles (' + urls.length + ')' + Icons.svg('chevronDown', 10) + '</button>';
+      foot = '<button type="button" class="panel-badge" data-act="menu" title="Open a panel">' + Icons.svg('externalLink', 11) + 'Panels (' + urls.length + ')' + Icons.svg('chevronDown', 10) + '</button>';
     }
 
     const toggle = kids.length
@@ -426,7 +426,7 @@
         '<span class="node-type">' + esc(meta.label) + (n.os ? ' &middot; ' + esc(n.os) : '') + '</span></div>' + toggle +
       '</div>' + ipHtml + (chips ? '<div class="node-chips">' + chips + '</div>' : '') + netHtml + svcHtml +
       (kids.length ? (n.collapsed
-        ? '<button type="button" class="node-collapsed" data-act="toggle">' + Icons.svg('chevronRight', 12) + kids.length + (kids.length === 1 ? ' elemento' : ' elementos') + '</button>'
+        ? '<button type="button" class="node-collapsed" data-act="toggle">' + Icons.svg('chevronRight', 12) + kids.length + (kids.length === 1 ? ' item' : ' items') + '</button>'
         : '<div class="node-children"></div>') : '') +
       (foot ? '<div class="node-foot">' + foot + '</div>' : '') + overlayHtml + dots;
 
@@ -450,8 +450,8 @@
       : '';
     el.innerHTML = '<div class="node-head"><span class="node-icon">' + Icons.svg('group', depth === 0 ? 18 : 15) + '</span>' +
       (n.name ? '<span class="node-name group-title">' + esc(n.name) + '</span>' : '<span class="group-title-spacer"></span>') + toggle + '</div>' +
-      (!kids.length ? '<div class="group-empty">Arrastra nodos aquí</div>'
-        : n.collapsed ? '<button type="button" class="node-collapsed" data-act="toggle">' + Icons.svg('chevronRight', 12) + kids.length + (kids.length === 1 ? ' elemento' : ' elementos') + '</button>'
+      (!kids.length ? '<div class="group-empty">Drag nodes here</div>'
+        : n.collapsed ? '<button type="button" class="node-collapsed" data-act="toggle">' + Icons.svg('chevronRight', 12) + kids.length + (kids.length === 1 ? ' item' : ' items') + '</button>'
           : '<div class="node-children group-children" style="--cols:' + cols + '"></div>');
     const holder = el.querySelector(':scope > .node-children');
     if (holder) kids.forEach((k) => holder.appendChild(this._buildNode(k, depth + 1)));
@@ -468,8 +468,8 @@
     el.style.setProperty('--gc', g.color);
     const icons = members.slice(0, 8).map((m) => '<span class="gc-icon" title="' + esc(m.name) + '">' + Icons.svg(Model.typeMeta(m.type).icon, 12) + '</span>').join('');
     el.innerHTML = '<div class="node-head"><span class="node-icon">' + Icons.svg('group', 18) + '</span>' +
-      '<div class="node-title"><span class="node-name">' + esc(g.name) + '</span><span class="node-type">Grupo &middot; ' + members.length + (members.length === 1 ? ' nodo' : ' nodos') + '</span></div>' +
-      '<button type="button" class="node-toggle" data-act="group-expand" title="Expandir grupo">' + Icons.svg('chevronRight', 13) + '</button></div>' +
+      '<div class="node-title"><span class="node-name">' + esc(g.name) + '</span><span class="node-type">Group &middot; ' + members.length + (members.length === 1 ? ' node' : ' nodes') + '</span></div>' +
+      '<button type="button" class="node-toggle" data-act="group-expand" title="Expand group">' + Icons.svg('chevronRight', 13) + '</button></div>' +
       '<div class="gc-icons">' + icons + (members.length > 8 ? '<span class="gc-more">+' + (members.length - 8) + '</span>' : '') + '</div>';
     this.nodesLayer.appendChild(el);
     this.groupEls['card:' + g.id] = el;
@@ -954,7 +954,7 @@
       const n = this.ix.get(nodeEl.dataset.nodeId);
       if (!n) return;
       const r = act.getBoundingClientRect();
-      UI.showMenuAt(r.left, r.bottom + 4, [{ header: 'Abrir panel' }].concat(Model.nodeUrls(n).map((u) => ({
+      UI.showMenuAt(r.left, r.bottom + 4, [{ header: 'Open panel' }].concat(Model.nodeUrls(n).map((u) => ({
         label: u.name, hint: u.url.replace(/^https?:\/\//, '').slice(0, 28), icon: 'externalLink',
         onClick: () => window.open(u.url, '_blank', 'noopener')
       }))));
@@ -1036,7 +1036,7 @@
       box.innerHTML = '<div class="group-head" data-group-id="' + esc(g.id) + '">' +
         '<span class="group-dot"></span><span class="group-name">' + esc(g.name) + '</span>' +
         '<span class="group-count">' + members.length + '</span>' +
-        '<button type="button" class="group-btn" data-act="group-collapse" title="Colapsar grupo">' + Icons.svg('chevronUp', 12) + '</button></div>';
+        '<button type="button" class="group-btn" data-act="group-collapse" title="Collapse group">' + Icons.svg('chevronUp', 12) + '</button></div>';
       this.groupsLayer.appendChild(box);
     });
   };

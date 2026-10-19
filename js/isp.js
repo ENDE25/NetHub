@@ -10,7 +10,7 @@
     { id: 'yoigo', name: 'Yoigo', color: '#6ec800', initials: 'YO' },
     { id: 'jazztel', name: 'Jazztel', color: '#f39200', initials: 'JZ' },
     { id: 'pepephone', name: 'Pepephone', color: '#8dc63f', initials: 'PP' },
-    { id: 'o2es', name: 'O2 España', color: '#0019a5', initials: 'O2' },
+    { id: 'o2es', name: 'O2 Spain', color: '#0019a5', initials: 'O2' },
     { id: 'digi', name: 'DIGI', color: '#e2001a', initials: 'DG' },
     { id: 'adamo', name: 'Adamo', color: '#7b2ff7', initials: 'AD' },
     { id: 'euskaltel', name: 'Euskaltel', color: '#e30613', initials: 'EU' },
@@ -61,7 +61,7 @@
     { id: 'kddi', name: 'KDDI / au', color: '#e6002d', initials: 'AU' },
     { id: 'sktelecom', name: 'SK Telecom', color: '#ec1c47', initials: 'SK' },
     { id: 'kt', name: 'KT', color: '#00478d', initials: 'KT' },
-    { id: 'other', name: 'Otro / personalizado', color: '#5b6676', initials: '?' }
+    { id: 'other', name: 'Other / custom', color: '#5b6676', initials: '?' }
   ];
 
   global.NetHub = global.NetHub || {};

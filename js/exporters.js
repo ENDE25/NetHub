@@ -30,23 +30,23 @@
     const ix = Model.index(state);
     let head = [], rows = [];
     if (kind === 'interfaces') {
-      head = ['Nodo', 'Interfaz', 'Tipo', 'Modo', 'IP', 'Gateway', 'MAC', 'VLAN', 'Red', 'Velocidad'];
+      head = ['Node', 'Interface', 'Type', 'Mode', 'IP', 'Gateway', 'MAC', 'VLAN', 'Network', 'Speed'];
       state.nodes.forEach((n) => n.interfaces.forEach((i) => {
         const net = Model.networkOf(state, i);
         rows.push([nodeName(n), i.name, (IFACE_KINDS[i.kind] || {}).label, IP_MODES[i.mode], i.ip, i.gateway, i.mac, i.vlan, net ? net.name : '', i.speed]);
       }));
     } else if (kind === 'services') {
-      head = ['Nodo', 'Servicio', 'Puerto', 'Protocolo', 'URL', 'Notas'];
+      head = ['Node', 'Service', 'Port', 'Protocol', 'URL', 'Notes'];
       state.nodes.forEach((n) => n.services.forEach((s) => rows.push([nodeName(n), s.name, s.port, s.proto, s.url, s.notes])));
     } else if (kind === 'links') {
-      head = ['Origen', 'Interfaz origen', 'Destino', 'Interfaz destino', 'Medio', 'Velocidad', 'Etiqueta', 'VLANs'];
+      head = ['Source', 'Source interface', 'Destination', 'Destination interface', 'Medium', 'Speed', 'Label', 'VLANs'];
       state.links.forEach((l) => {
         const a = ix.get(l.a.nodeId), b = ix.get(l.b.nodeId);
         const ia = a && a.interfaces.find((i) => i.id === l.a.ifaceId), ib = b && b.interfaces.find((i) => i.id === l.b.ifaceId);
         rows.push([nodeName(a), ia ? ia.name : '', nodeName(b), ib ? ib.name : '', (MEDIA[l.medium] || {}).label, l.speed, l.label, l.vlans]);
       });
     } else {
-      head = ['Nombre', 'Tipo', 'Alojado en', 'IPs', 'Redes', 'Overlays', 'SO', 'Modelo', 'Función', 'Grupo', 'Etiquetas', 'Servicios', 'Notas'];
+      head = ['Name', 'Type', 'Hosted on', 'IPs', 'Networks', 'Overlays', 'OS', 'Model', 'Role', 'Group', 'Tags', 'Services', 'Notes'];
       state.nodes.forEach((n) => {
         const g = state.groups.find((x) => x.id === n.groupId);
         rows.push([nodeName(n), Model.typeMeta(n.type).label, nodeName(ix.parent(n.id)), Model.nodeIps(n).map((i) => i.text).join(' '),
@@ -67,49 +67,49 @@
 
   function markdown(state, name) {
     const ix = Model.index(state);
-    let out = '# ' + (name || 'Red') + '\n\n';
-    out += state.nodes.length + ' nodos, ' + state.links.length + ' conexiones, ' + state.networks.length + ' redes, ' + state.overlays.length + ' overlays.\n\n';
+    let out = '# ' + (name || 'Network') + '\n\n';
+    out += state.nodes.length + ' nodes, ' + state.links.length + ' connections, ' + state.networks.length + ' networks, ' + state.overlays.length + ' overlays.\n\n';
 
     if (state.networks.length) {
-      out += '## Redes\n\n' + mdTable(['Red', 'CIDR', 'VLAN', 'Gateway', 'DHCP', 'En uso'], state.networks.map((net) => {
+      out += '## Networks\n\n' + mdTable(['Network', 'CIDR', 'VLAN', 'Gateway', 'DHCP', 'In use'], state.networks.map((net) => {
         const a = Ipam.analyze(state, net);
         return [net.name, net.cidr, net.vlan, net.gateway, net.dhcpStart && net.dhcpEnd ? net.dhcpStart + ' - ' + net.dhcpEnd : '', a.valid ? a.usedCount + ' / ' + a.usable : ''];
       }));
     }
     if (state.overlays.length) {
-      out += '## Overlays\n\n' + mdTable(['Overlay', 'Rango', 'Miembros'], state.overlays.map((ov) => [ov.name, ov.cidr, Ipam.overlayMembers(state, ov).map((m) => nodeName(m.node) + (m.text ? ' (' + m.text + ')' : '')).join(', ')]));
+      out += '## Overlays\n\n' + mdTable(['Overlay', 'Range', 'Members'], state.overlays.map((ov) => [ov.name, ov.cidr, Ipam.overlayMembers(state, ov).map((m) => nodeName(m.node) + (m.text ? ' (' + m.text + ')' : '')).join(', ')]));
     }
 
-    out += '## Inventario\n\n';
+    out += '## Inventory\n\n';
     const writeNode = (n, level) => {
       const meta = Model.typeMeta(n.type);
       out += '#'.repeat(Math.min(level, 6)) + ' ' + nodeName(n) + ' (' + meta.label + ')\n\n';
       const facts = [];
       const g = state.groups.find((x) => x.id === n.groupId);
-      if (g) facts.push('Grupo: ' + g.name);
-      if (n.os) facts.push('SO: ' + n.os);
-      if (n.model) facts.push('Modelo: ' + n.model);
-      if (n.role) facts.push('Función: ' + n.role);
-      if (n.tags.length) facts.push('Etiquetas: ' + n.tags.join(', '));
+      if (g) facts.push('Group: ' + g.name);
+      if (n.os) facts.push('OS: ' + n.os);
+      if (n.model) facts.push('Model: ' + n.model);
+      if (n.role) facts.push('Role: ' + n.role);
+      if (n.tags.length) facts.push('Tags: ' + n.tags.join(', '));
       n.fields.filter((f) => f.k || f.v).forEach((f) => facts.push(f.k + ': ' + f.v));
       if (facts.length) out += facts.map((f) => '- ' + f).join('\n') + '\n\n';
-      out += mdTable(['Interfaz', 'Tipo', 'IP', 'Red / overlay', 'VLAN', 'MAC'], (Model.typeMeta(n.type).noIface ? [] : n.interfaces).filter((i) => i.name || i.ip || i.mode === 'dhcp' || i.mac).map((i) => {
+      out += mdTable(['Interface', 'Type', 'IP', 'Network / overlay', 'VLAN', 'MAC'], (Model.typeMeta(n.type).noIface ? [] : n.interfaces).filter((i) => i.name || i.ip || i.mode === 'dhcp' || i.mac).map((i) => {
         const net = Model.networkOf(state, i);
         const ov = state.overlays.find((o) => o.id === i.overlayId);
         return [i.name, (IFACE_KINDS[i.kind] || {}).label, i.ip || (i.mode === 'dhcp' ? 'DHCP' : ''), net ? net.name : (ov ? ov.name : ''), i.vlan, i.mac];
       }));
-      out += mdTable(['Servicio', 'Puerto', 'URL'], n.services.map((s) => [s.name, s.port ? s.port + '/' + (s.proto || 'tcp') : '', s.url]));
+      out += mdTable(['Service', 'Port', 'URL'], n.services.map((s) => [s.name, s.port ? s.port + '/' + (s.proto || 'tcp') : '', s.url]));
       if (n.notes.trim()) out += n.notes.trim() + '\n\n';
       ix.children(n.id).forEach((c) => writeNode(c, level + 1));
     };
     state.nodes.filter((n) => ix.isTop(n.id)).sort((a, b) => nodeName(a).localeCompare(nodeName(b))).forEach((n) => writeNode(n, 3));
 
-    out += '## Conexiones\n\n' + mdTable(['Origen', 'Interfaz', 'Destino', 'Interfaz', 'Medio', 'Velocidad', 'Etiqueta'], state.links.map((l) => {
+    out += '## Connections\n\n' + mdTable(['Source', 'Interface', 'Destination', 'Interface', 'Medium', 'Speed', 'Label'], state.links.map((l) => {
       const a = ix.get(l.a.nodeId), b = ix.get(l.b.nodeId);
       const ia = a && a.interfaces.find((i) => i.id === l.a.ifaceId), ib = b && b.interfaces.find((i) => i.id === l.b.ifaceId);
       return [nodeName(a), ia ? ia.name : '', nodeName(b), ib ? ib.name : '', (MEDIA[l.medium] || {}).label, l.speed, l.label];
     }));
-    out += '_No incluye credenciales. Generado con NetHub el ' + new Date().toISOString().slice(0, 10) + '._\n';
+    out += '_No credentials included. Generated with NetHub on ' + new Date().toISOString().slice(0, 10) + '._\n';
     return out;
   }
 
@@ -136,7 +136,7 @@
     const tops = state.nodes.filter((n) => ix.isTop(n.id));
     state.groups.forEach((g, gi) => {
       if (!tops.some((n) => n.groupId === g.id)) return;
-      lines.push('  subgraph g' + gi + '["' + q(g.name || 'Grupo') + '"]');
+      lines.push('  subgraph g' + gi + '["' + q(g.name || 'Group') + '"]');
       tops.filter((n) => n.groupId === g.id).forEach((n) => draw(n, '    '));
       lines.push('  end');
     });
@@ -283,7 +283,7 @@
       const b = topology.boxes[k];
       const g = state.groups.find((x) => 'g:' + x.id === k);
       out.push('<rect x="' + b.x + '" y="' + b.y + '" width="' + b.w + '" height="' + b.h + '" rx="12" fill="#171e28" stroke="' + (g ? g.color : '#5b8cff') + '" stroke-dasharray="6 4"/>');
-      out.push('<text x="' + (b.x + 14) + '" y="' + (b.y + 26) + '" fill="#e9edf3" font-size="13.5" font-weight="600" ' + FONT + '>' + xml(g ? g.name : 'Grupo') + '</text>');
+      out.push('<text x="' + (b.x + 14) + '" y="' + (b.y + 26) + '" fill="#e9edf3" font-size="13.5" font-weight="600" ' + FONT + '>' + xml(g ? g.name : 'Group') + '</text>');
     });
     drawLinks(true);
     out.push('</svg>');
@@ -293,11 +293,11 @@
   function png(topology, scale) {
     return new Promise((resolve, reject) => {
       const source = svg(topology);
-      if (!source) { reject(new Error('Mapa vacío')); return; }
+      if (!source) { reject(new Error('Empty map')); return; }
       const m = /width="(\d+)" height="(\d+)"/.exec(source);
       const w = +m[1], h = +m[2];
       const s = scale || 2;
-      if (w * s > 16000 || h * s > 16000) { reject(new Error('El mapa es demasiado grande para PNG: exporta SVG.')); return; }
+      if (w * s > 16000 || h * s > 16000) { reject(new Error('The map is too large for PNG: export SVG instead.')); return; }
       const url = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));
       const img = new Image();
       img.onload = () => {
@@ -308,9 +308,9 @@
         ctx.scale(s, s);
         ctx.drawImage(img, 0, 0, w, h);
         URL.revokeObjectURL(url);
-        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('No se pudo generar el PNG'))), 'image/png');
+        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Could not generate the PNG'))), 'image/png');
       };
-      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo generar el PNG')); };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not generate the PNG')); };
       img.src = url;
     });
   }

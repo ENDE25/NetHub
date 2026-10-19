@@ -15,12 +15,12 @@
   // ---------- Catalogs ----------
 
   const CATEGORIES = [
-    { id: 'net', label: 'Red' },
-    { id: 'compute', label: 'Cómputo' },
+    { id: 'net', label: 'Network' },
+    { id: 'compute', label: 'Compute' },
     { id: 'virtual', label: 'Virtual' },
-    { id: 'device', label: 'Dispositivos' },
-    { id: 'wan', label: 'WAN / Nube' },
-    { id: 'other', label: 'Otros' }
+    { id: 'device', label: 'Devices' },
+    { id: 'wan', label: 'WAN / Cloud' },
+    { id: 'other', label: 'Other' }
   ];
 
   // group: CSS colour family of the card. canHost: may contain VMs/containers.
@@ -28,27 +28,27 @@
     router:   { label: 'Router',            icon: 'router',   cat: 'net',     group: 'net',       canHost: true },
     switch:   { label: 'Switch',            icon: 'switch',   cat: 'net',     group: 'net' },
     firewall: { label: 'Firewall',          icon: 'firewall', cat: 'net',     group: 'net',       canHost: true },
-    ap:       { label: 'Punto de acceso',   icon: 'wireless', cat: 'net',     group: 'net' },
-    modem:    { label: 'Módem / ONT',       icon: 'modem',    cat: 'net',     group: 'net' },
-    lb:       { label: 'Balanceador',       icon: 'lb',       cat: 'net',     group: 'net' },
-    server:   { label: 'Servidor',          icon: 'server',   cat: 'compute', group: 'compute',   canHost: true },
+    ap:       { label: 'Access point',   icon: 'wireless', cat: 'net',     group: 'net' },
+    modem:    { label: 'Modem / ONT',       icon: 'modem',    cat: 'net',     group: 'net' },
+    lb:       { label: 'Load balancer',       icon: 'lb',       cat: 'net',     group: 'net' },
+    server:   { label: 'Server',          icon: 'server',   cat: 'compute', group: 'compute',   canHost: true },
     nas:      { label: 'NAS',               icon: 'server',   cat: 'compute', group: 'compute',   canHost: true },
     host:     { label: 'Host / PC',         icon: 'host',     cat: 'compute', group: 'compute',   canHost: true, endpoint: true },
-    laptop:   { label: 'Portátil',          icon: 'laptop',   cat: 'compute', group: 'compute',   canHost: true, endpoint: true },
-    sbc:      { label: 'Placa (Raspberry…)', icon: 'sbc',     cat: 'compute', group: 'compute',   canHost: true },
-    vm:       { label: 'Máquina virtual',   icon: 'vm',       cat: 'virtual', group: 'vm',        virtual: true, canHost: true },
-    docker:   { label: 'Contenedor Docker', icon: 'docker',   cat: 'virtual', group: 'container', virtual: true },
-    lxc:      { label: 'Contenedor / LXC',  icon: 'lxc',      cat: 'virtual', group: 'container', virtual: true, canHost: true },
-    camera:   { label: 'Cámara',            icon: 'camera',   cat: 'device',  group: 'device', endpoint: true },
-    printer:  { label: 'Impresora',         icon: 'printer',  cat: 'device',  group: 'device', endpoint: true },
-    phone:    { label: 'Móvil / tablet',    icon: 'phone',    cat: 'device',  group: 'device', endpoint: true },
-    iot:      { label: 'IoT / domótica',    icon: 'iot',      cat: 'device',  group: 'device', endpoint: true },
-    ups:      { label: 'SAI / PDU',         icon: 'ups',      cat: 'device',  group: 'device' },
-    isp:      { label: 'ISP / Operador',    icon: 'cloud',    cat: 'wan',     group: 'wan',       noIface: true },
+    laptop:   { label: 'Laptop',          icon: 'laptop',   cat: 'compute', group: 'compute',   canHost: true, endpoint: true },
+    sbc:      { label: 'Board (Raspberry…)', icon: 'sbc',     cat: 'compute', group: 'compute',   canHost: true },
+    vm:       { label: 'Virtual machine',   icon: 'vm',       cat: 'virtual', group: 'vm',        virtual: true, canHost: true },
+    docker:   { label: 'Docker container', icon: 'docker',   cat: 'virtual', group: 'container', virtual: true },
+    lxc:      { label: 'Container / LXC',  icon: 'lxc',      cat: 'virtual', group: 'container', virtual: true, canHost: true },
+    camera:   { label: 'Camera',            icon: 'camera',   cat: 'device',  group: 'device', endpoint: true },
+    printer:  { label: 'Printer',         icon: 'printer',  cat: 'device',  group: 'device', endpoint: true },
+    phone:    { label: 'Mobile / tablet',    icon: 'phone',    cat: 'device',  group: 'device', endpoint: true },
+    iot:      { label: 'IoT / home automation',    icon: 'iot',      cat: 'device',  group: 'device', endpoint: true },
+    ups:      { label: 'UPS / PDU',         icon: 'ups',      cat: 'device',  group: 'device' },
+    isp:      { label: 'ISP / Carrier',    icon: 'cloud',    cat: 'wan',     group: 'wan',       noIface: true },
     cloud:    { label: 'Internet / WAN',    icon: 'cloud',    cat: 'wan',     group: 'wan',       noIface: true },
-    vps:      { label: 'Servidor cloud / VPS', icon: 'vps',   cat: 'wan',     group: 'wan',       canHost: true },
-    group:    { label: 'Grupo',             icon: 'group',    cat: 'other',   group: 'group',     canHost: true, hostsAny: true, noIface: true, noLinks: true },
-    generic:  { label: 'Otro',              icon: 'generic',  cat: 'other',   group: 'other',     canHost: true }
+    vps:      { label: 'Cloud server / VPS', icon: 'vps',   cat: 'wan',     group: 'wan',       canHost: true },
+    group:    { label: 'Group',             icon: 'group',    cat: 'other',   group: 'group',     canHost: true, hostsAny: true, noIface: true, noLinks: true },
+    generic:  { label: 'Other',              icon: 'generic',  cat: 'other',   group: 'other',     canHost: true }
   };
 
   // Types offered when adding something *inside* another node.
@@ -60,35 +60,35 @@
     bridge:   { label: 'Bridge',              prefix: 'br',    icon: 'switch' },
     vlan:     { label: 'VLAN',                prefix: 'vlan',  icon: 'layers' },
     bond:     { label: 'Bond / LAG',          prefix: 'bond',  icon: 'link' },
-    tunnel:   { label: 'Túnel / VPN',         prefix: 'tun',   icon: 'cloud' },
-    virtual:  { label: 'Virtual / gestión',   prefix: 'mgmt',  icon: 'grip' },
+    tunnel:   { label: 'Tunnel / VPN',         prefix: 'tun',   icon: 'cloud' },
+    virtual:  { label: 'Virtual / management',   prefix: 'mgmt',  icon: 'grip' },
     loopback: { label: 'Loopback',            prefix: 'lo',    icon: 'port' }
   };
 
-  const IP_MODES = { static: 'Estática', dhcp: 'DHCP', none: 'Sin IP' };
+  const IP_MODES = { static: 'Static', dhcp: 'DHCP', none: 'No IP' };
 
   const MEDIA = {
-    ethernet: { label: 'Ethernet (cobre)', color: '#5b8cff' },
-    fiber:    { label: 'Fibra',            color: '#c084fc' },
+    ethernet: { label: 'Ethernet (copper)', color: '#5b8cff' },
+    fiber:    { label: 'Fiber',            color: '#c084fc' },
     wifi:     { label: 'Wi-Fi',            color: '#2ad9b8' },
     virtual:  { label: 'Virtual',          color: '#7a8699' },
-    tunnel:   { label: 'Túnel / VPN',      color: '#f0b642' },
-    usb:      { label: 'USB / serie',      color: '#94a3b8' }
+    tunnel:   { label: 'Tunnel / VPN',      color: '#f0b642' },
+    usb:      { label: 'USB / serial',      color: '#94a3b8' }
   };
 
   const SPEEDS = ['10 Mbps', '100 Mbps', '1 Gbps', '2.5 Gbps', '5 Gbps', '10 Gbps', '25 Gbps', '40 Gbps', '100 Gbps'];
 
   const LAYERS = [
-    { id: 'physical', label: 'Física',    hint: 'Cables, puertos e IPs' },
-    { id: 'logical',  label: 'Lógica',    hint: 'Nodos agrupados por red / VLAN' },
-    { id: 'overlay',  label: 'Overlays',  hint: 'VPN y redes virtuales' },
-    { id: 'services', label: 'Servicios', hint: 'Servicios y paneles de cada nodo' }
+    { id: 'physical', label: 'Physical',    hint: 'Cables, ports and IPs' },
+    { id: 'logical',  label: 'Logical',    hint: 'Nodes grouped by network / VLAN' },
+    { id: 'overlay',  label: 'Overlays',  hint: 'VPNs and virtual networks' },
+    { id: 'services', label: 'Services', hint: 'Services and panels of each node' }
   ];
 
   const LINK_STYLES = [
-    { id: 'straight',   label: 'Líneas rectas',  icon: 'straight' },
-    { id: 'orthogonal', label: 'Ortogonales',    icon: 'ortho' },
-    { id: 'curved',     label: 'Curvas',         icon: 'curve' }
+    { id: 'straight',   label: 'Straight lines',  icon: 'straight' },
+    { id: 'orthogonal', label: 'Orthogonal',    icon: 'ortho' },
+    { id: 'curved',     label: 'Curved',         icon: 'curve' }
   ];
 
   const PALETTE = ['#5b8cff', '#2ad9b8', '#f0b642', '#c084fc', '#f2685f', '#4ade80', '#38bdf8', '#fb923c', '#e879f9', '#a3e635'];
@@ -168,13 +168,13 @@
       return { id: uuid(), a, b, medium: 'ethernet', speed: '', label: '', ssid: '', vlans: '', notes: '' };
     },
     network(name, cidr, color) {
-      return { id: uuid(), name: name || 'Red nueva', cidr: cidr || '', vlan: '', gateway: '', dhcpStart: '', dhcpEnd: '', color: color || PALETTE[0], notes: '', inferred: false };
+      return { id: uuid(), name: name || 'New network', cidr: cidr || '', vlan: '', gateway: '', dhcpStart: '', dhcpEnd: '', color: color || PALETTE[0], notes: '', inferred: false };
     },
     overlay(name, color) {
       return { id: uuid(), name: name || 'VPN', color: color || '#2ad9b8', cidr: '', notes: '' };
     },
     group(name, color) {
-      return { id: uuid(), name: name || 'Grupo', color: color || '#5b8cff', collapsed: false, x: 0, y: 0 };
+      return { id: uuid(), name: name || 'Group', color: color || '#5b8cff', collapsed: false, x: 0, y: 0 };
     }
   };
 
@@ -376,7 +376,7 @@
   }
 
   function serviceLabel(s) {
-    return (s.name || 'Servicio') + (s.port ? ' :' + s.port : '');
+    return (s.name || 'Service') + (s.port ? ' :' + s.port : '');
   }
 
   // Builds a suggested URL for a service on a node using its first known IP.

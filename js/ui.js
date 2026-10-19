@@ -37,7 +37,7 @@
     return toastRoot;
   }
 
-  // opts.action = { label, onClick } adds a button (e.g. "Deshacer"); opts.duration overrides the timeout.
+  // opts.action = { label, onClick } adds a button (e.g. "Undo"); opts.duration overrides the timeout.
   function toast(message, type, opts) {
     opts = opts || {};
     const root = ensureToastRoot();
@@ -94,7 +94,7 @@
     const closeBtn = document.createElement('button');
     closeBtn.className = 'icon-btn';
     closeBtn.innerHTML = Icons.svg('close', 16);
-    closeBtn.setAttribute('aria-label', 'Cerrar');
+    closeBtn.setAttribute('aria-label', 'Close');
     closeBtn.addEventListener('click', () => closeModal(overlay));
     header.appendChild(closeBtn);
 
@@ -134,7 +134,7 @@
     body.innerHTML = '<div class="confirm-icon' + (danger ? ' danger' : '') + '">' + Icons.svg('alertTriangle', 22) + '</div>' +
       '<p>' + escapeHtml(message) + '</p>';
 
-    const cancelBtn = button(cancelLabel || 'Cancelar', 'btn-ghost');
+    const cancelBtn = button(cancelLabel || 'Cancel', 'btn-ghost');
     const confirmBtn = button(confirmLabel || 'Confirmar', danger ? 'btn-danger' : 'btn-primary');
 
     const m = modal({ title, bodyEl: body, footerButtons: [cancelBtn, confirmBtn], danger });
@@ -208,7 +208,7 @@
     body.innerHTML = '<div class="field"><span class="field-label">' + escapeHtml(label || '') + '</span>' +
       '<input type="text" data-role="prompt-input" value="' + escapeHtml(value || '') + '" placeholder="' + escapeHtml(placeholder || '') + '"/></div>';
     const input = body.querySelector('input');
-    const cancelBtn = button('Cancelar', 'btn-ghost');
+    const cancelBtn = button('Cancel', 'btn-ghost');
     const okBtn = button(confirmLabel || 'Aceptar', 'btn-primary');
     const m = modal({ title, bodyEl: body, footerButtons: [cancelBtn, okBtn], width: '400px' });
     const submit = () => { const v = input.value.trim(); if (!v) { input.focus(); return; } m.close(); onConfirm(v); };

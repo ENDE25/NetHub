@@ -24,12 +24,12 @@
       const parent = ix.parent(n.id);
       const urls = Model.nodeUrls(n);
       items.push({
-        kind: 'Nodos', icon: meta.icon, title: n.name || meta.label,
-        sub: meta.label + (parent ? ' en ' + parent.name : '') + (ips.length ? ' · ' + ips.slice(0, 3).join(', ') : ''),
+        kind: 'Nodes', icon: meta.icon, title: n.name || meta.label,
+        sub: meta.label + (parent ? ' in ' + parent.name : '') + (ips.length ? ' · ' + ips.slice(0, 3).join(', ') : ''),
         hay: [n.name, meta.label, n.os, n.model, n.role, n.tags.join(' '), ips.join(' '), macs.join(' '), n.fields.map((f) => f.v).join(' '),
           n.services.map((s) => s.name + ' ' + s.port).join(' ')].join(' ').toLowerCase(),
         titleLc: (n.name || '').toLowerCase(),
-        hint: urls.length ? 'Mayús+Enter abre el panel' : '',
+        hint: urls.length ? 'Shift+Enter opens the panel' : '',
         run: (e) => (e.shiftKey && urls.length ? window.open(urls[0].url, '_blank', 'noopener') : api.onSelectNode(n.id)),
         rank: 0
       });
@@ -39,27 +39,27 @@
           kind: 'Servicios', icon: 'externalLink', title: (s.name || 'Servicio') + (s.port ? ' :' + s.port : ''),
           sub: (n.name || meta.label) + (u ? ' · ' + u : ''),
           hay: [s.name, s.port, s.url, n.name].join(' ').toLowerCase(), titleLc: (s.name || '').toLowerCase(),
-          hint: u ? 'Enter abre la URL' : '',
+          hint: u ? 'Enter opens the URL' : '',
           run: (e) => (u && !e.shiftKey ? window.open(u, '_blank', 'noopener') : api.onSelectNode(n.id, 'services')),
           rank: 1
         });
       });
     });
     state.networks.forEach((net) => items.push({
-      kind: 'Redes', icon: 'subnet', title: net.name, sub: net.cidr + (net.vlan ? ' · VLAN ' + net.vlan : ''),
+      kind: 'Networks', icon: 'subnet', title: net.name, sub: net.cidr + (net.vlan ? ' · VLAN ' + net.vlan : ''),
       hay: [net.name, net.cidr, net.vlan, net.gateway].join(' ').toLowerCase(), titleLc: net.name.toLowerCase(),
       run: () => api.onSelectTarget('network', net.id), rank: 2
     }));
     state.overlays.forEach((ov) => items.push({
-      kind: 'Redes', icon: 'cloud', title: ov.name, sub: 'Overlay' + (ov.cidr ? ' · ' + ov.cidr : ''),
+      kind: 'Networks', icon: 'cloud', title: ov.name, sub: 'Overlay' + (ov.cidr ? ' · ' + ov.cidr : ''),
       hay: [ov.name, ov.cidr].join(' ').toLowerCase(), titleLc: ov.name.toLowerCase(),
       run: () => api.onSelectTarget('overlay', ov.id), rank: 2
     }));
     state.groups.forEach((g) => items.push({
-      kind: 'Grupos', icon: 'group', title: g.name || 'Grupo sin nombre', sub: 'Grupo', hay: (g.name || 'grupo').toLowerCase(), titleLc: (g.name || 'grupo').toLowerCase(),
+      kind: 'Groups', icon: 'group', title: g.name || 'Unnamed group', sub: 'Group', hay: (g.name || 'group').toLowerCase(), titleLc: (g.name || 'group').toLowerCase(),
       run: () => api.onSelectTarget('group', g.id), rank: 3
     }));
-    commands.forEach((c) => items.push({ kind: 'Comandos', icon: c.icon || 'wand', title: c.label, sub: c.hint || '', hay: (c.label + ' ' + (c.keywords || '')).toLowerCase(), titleLc: c.label.toLowerCase(), run: () => c.run(), rank: 4 }));
+    commands.forEach((c) => items.push({ kind: 'Commands', icon: c.icon || 'wand', title: c.label, sub: c.hint || '', hay: (c.label + ' ' + (c.keywords || '')).toLowerCase(), titleLc: c.label.toLowerCase(), run: () => c.run(), rank: 4 }));
     return items;
   }
 
@@ -70,8 +70,8 @@
     const tokens = q.split(/\s+/).filter(Boolean);
     const out = [];
     items.forEach((it) => {
-      if (onlyCommands && it.kind !== 'Comandos') return;
-      if (!tokens.length) { if (it.kind === 'Nodos' || it.kind === 'Comandos') out.push({ it, score: 0 }); return; }
+      if (onlyCommands && it.kind !== 'Commands') return;
+      if (!tokens.length) { if (it.kind === 'Nodes' || it.kind === 'Commands') out.push({ it, score: 0 }); return; }
       let score = 0;
       for (const t of tokens) {
         const pos = it.hay.indexOf(t);
@@ -90,9 +90,9 @@
     const overlay = document.createElement('div');
     overlay.className = 'palette-overlay';
     overlay.innerHTML = '<div class="palette">' +
-      '<div class="palette-input">' + Icons.svg('search', 16) + '<input type="text" placeholder="Buscar nodo, IP, MAC, servicio... (escribe > para comandos)" autocomplete="off" spellcheck="false"/><kbd>Esc</kbd></div>' +
+      '<div class="palette-input">' + Icons.svg('search', 16) + '<input type="text" placeholder="Search node, IP, MAC, service... (type > for commands)" autocomplete="off" spellcheck="false"/><kbd>Esc</kbd></div>' +
       '<div class="palette-list"></div>' +
-      '<div class="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd> moverse</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Mayús</kbd>+<kbd>Enter</kbd> alternativa</span></div></div>';
+      '<div class="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>Enter</kbd> open</span><span><kbd>Shift</kbd>+<kbd>Enter</kbd> alternative</span></div></div>';
     document.body.appendChild(overlay);
     const input = overlay.querySelector('input');
     const list = overlay.querySelector('.palette-list');

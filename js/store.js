@@ -32,7 +32,7 @@
   // Async because the storage backend (OPFS) has to be opened and read once before the app can start.
   async function init() {
     await Storage.init();
-    Storage.onWriteError(() => emit('status', { saved: false, error: 'No se pudo guardar en el almacenamiento del navegador' }));
+    Storage.onWriteError(() => emit('status', { saved: false, error: 'Could not save to browser storage' }));
     Storage.onExternal((id) => { if (index && id === index.activeId) emit('external', {}); });
     const b = Storage.bootstrap();
     index = b.index;
@@ -79,7 +79,7 @@
     try { prev = JSON.parse(prevSer); } catch (e) { return; }
     if (!prev.nodes || !prev.nodes.length) return;
     prev.view = state.view;
-    Storage.addSnapshot(index.activeId, prev, 'Automático', true);
+    Storage.addSnapshot(index.activeId, prev, 'Automatic', true);
     meta.autoSnap = Date.now();
   }
 
@@ -148,7 +148,7 @@
 
   // Replaces the whole current map (import, snapshot restore) as one undoable step.
   function replaceCurrent(next, label) {
-    Storage.addSnapshot(index.activeId, state, 'Antes de ' + (label || 'reemplazar'), false);
+    Storage.addSnapshot(index.activeId, state, 'Before ' + (label || 'replacing'), false);
     undoStack.push(lastSer);
     if (undoStack.length > MAX_UNDO) undoStack.shift();
     redoStack.length = 0;
@@ -186,7 +186,7 @@
     const id = NetHub.uuid();
     const next = content || Migrate.defaultState();
     if (!Storage.saveMap(id, next)) return null;
-    index.maps.push({ id, name: name || 'Mapa nuevo', updated: Date.now() });
+    index.maps.push({ id, name: name || 'New map', updated: Date.now() });
     index.activeId = id;
     Storage.saveIndex(index);
     loadInto(next);
@@ -218,7 +218,7 @@
     if (!index.maps.length) {
       const nid = NetHub.uuid();
       Storage.saveMap(nid, Migrate.defaultState());
-      index.maps.push({ id: nid, name: 'Mi red', updated: Date.now() });
+      index.maps.push({ id: nid, name: 'My network', updated: Date.now() });
       index.activeId = nid;
       Storage.saveIndex(index);
       loadInto(Storage.loadMap(nid));
@@ -239,7 +239,7 @@
   function listSnapshots() { return Storage.snapshots(index.activeId); }
   function saveSnapshot(label) {
     flush();
-    return Storage.addSnapshot(index.activeId, state, label || 'Versión guardada', false);
+    return Storage.addSnapshot(index.activeId, state, label || 'Saved version', false);
   }
   function restoreSnapshot(snapId) {
     const s = listSnapshots().find((x) => x.id === snapId);
@@ -247,7 +247,7 @@
     let next;
     try { next = Migrate.normalize(s.data); } catch (e) { return false; }
     next.view = state.view;
-    replaceCurrent(next, 'restaurar una versión');
+    replaceCurrent(next, 'restoring a version');
     return true;
   }
   function deleteSnapshot(snapId) { Storage.deleteSnapshot(index.activeId, snapId); }

@@ -73,7 +73,7 @@
     });
     table.appendChild(body);
     wrap.appendChild(table);
-    if (!data.length) wrap.appendChild(el('div', 'table-empty', needle ? 'Ningún resultado para "' + esc(filter) + '".' : 'Todavía no hay datos.'));
+    if (!data.length) wrap.appendChild(el('div', 'table-empty', needle ? 'No results for "' + esc(filter) + '".' : 'No data yet.'));
     return { wrap, count: data.length, total: rows.length };
   }
 
@@ -124,57 +124,57 @@
     const touch = (id, key) => { ctx.commit(key); ctx.onChanged({ nodeId: id, structural: true }); };
     if (ui.invTab === 'nodes') {
       return [
-        { key: 'name', label: 'Nombre', value: (r) => r.n.name, edit: (r, v) => { r.n.name = v; touch(r.id, 'inv:name:' + r.id); } },
-        { key: 'type', label: 'Tipo', value: (r) => Model.typeMeta(r.n.type).label },
-        { key: 'host', label: 'Alojado en', value: (r) => (r.host ? nodeName(r.host) : '') },
+        { key: 'name', label: 'Name', value: (r) => r.n.name, edit: (r, v) => { r.n.name = v; touch(r.id, 'inv:name:' + r.id); } },
+        { key: 'type', label: 'Type', value: (r) => Model.typeMeta(r.n.type).label },
+        { key: 'host', label: 'Hosted on', value: (r) => (r.host ? nodeName(r.host) : '') },
         { key: 'ips', label: 'IPs', value: (r) => r.ips, cls: 'mono' },
-        { key: 'nets', label: 'Redes', value: (r) => r.nets },
+        { key: 'nets', label: 'Networks', value: (r) => r.nets },
         { key: 'ovs', label: 'Overlays', value: (r) => r.ovs },
-        { key: 'svc', label: 'Servicios', value: (r) => r.n.services.map((s) => s.name || s.port).join(', ') },
+        { key: 'svc', label: 'Services', value: (r) => r.n.services.map((s) => s.name || s.port).join(', ') },
         { key: 'os', label: 'SO', value: (r) => r.n.os, edit: (r, v) => { r.n.os = v; touch(r.id, 'inv:os:' + r.id); } },
-        { key: 'model', label: 'Modelo', value: (r) => r.n.model, edit: (r, v) => { r.n.model = v; touch(r.id, 'inv:model:' + r.id); } },
-        { key: 'group', label: 'Grupo', value: (r) => (r.group ? r.group.name || 'Grupo' : '') },
-        { key: 'tags', label: 'Etiquetas', value: (r) => r.n.tags.join(', ') }
+        { key: 'model', label: 'Model', value: (r) => r.n.model, edit: (r, v) => { r.n.model = v; touch(r.id, 'inv:model:' + r.id); } },
+        { key: 'group', label: 'Group', value: (r) => (r.group ? r.group.name || 'Group' : '') },
+        { key: 'tags', label: 'Tags', value: (r) => r.n.tags.join(', ') }
       ];
     }
     if (ui.invTab === 'interfaces') {
       return [
-        { key: 'node', label: 'Nodo', value: (r) => nodeName(r.n) },
-        { key: 'name', label: 'Interfaz', value: (r) => r.i.name, edit: (r, v) => { r.i.name = v; touch(r.id, 'inv:iface:' + r.i.id); } },
-        { key: 'kind', label: 'Tipo', value: (r) => (IFACE_KINDS[r.i.kind] || IFACE_KINDS.ethernet).label },
-        { key: 'mode', label: 'Modo', value: (r) => IP_MODES[r.i.mode] },
+        { key: 'node', label: 'Node', value: (r) => nodeName(r.n) },
+        { key: 'name', label: 'Interface', value: (r) => r.i.name, edit: (r, v) => { r.i.name = v; touch(r.id, 'inv:iface:' + r.i.id); } },
+        { key: 'kind', label: 'Type', value: (r) => (IFACE_KINDS[r.i.kind] || IFACE_KINDS.ethernet).label },
+        { key: 'mode', label: 'Mode', value: (r) => IP_MODES[r.i.mode] },
         { key: 'ip', label: 'IP', value: (r) => r.i.ip, edit: (r, v) => { r.i.ip = v.trim(); if (v.trim() && r.i.mode === 'none') r.i.mode = 'static'; touch(r.id, 'inv:ip:' + r.i.id); }, cls: 'mono' },
-        { key: 'net', label: 'Red', value: (r) => (r.net ? r.net.name : (r.ov ? r.ov.name : '')) },
+        { key: 'net', label: 'Network', value: (r) => (r.net ? r.net.name : (r.ov ? r.ov.name : '')) },
         { key: 'vlan', label: 'VLAN', value: (r) => r.i.vlan, edit: (r, v) => { r.i.vlan = v; touch(r.id, 'inv:vlan:' + r.i.id); } },
         { key: 'mac', label: 'MAC', value: (r) => r.i.mac, edit: (r, v) => { r.i.mac = v; touch(r.id, 'inv:mac:' + r.i.id); }, cls: 'mono' },
-        { key: 'peer', label: 'Conectada a', value: (r) => r.peer }
+        { key: 'peer', label: 'Connected to', value: (r) => r.peer }
       ];
     }
     if (ui.invTab === 'services') {
       return [
-        { key: 'node', label: 'Nodo', value: (r) => nodeName(r.n) },
-        { key: 'name', label: 'Servicio', value: (r) => r.s.name, edit: (r, v) => { r.s.name = v; touch(r.id, 'inv:svc:' + r.s.id); } },
-        { key: 'port', label: 'Puerto', value: (r) => String(r.s.port), edit: (r, v) => { r.s.port = v; touch(r.id, 'inv:port:' + r.s.id); }, width: '90px' },
+        { key: 'node', label: 'Node', value: (r) => nodeName(r.n) },
+        { key: 'name', label: 'Service', value: (r) => r.s.name, edit: (r, v) => { r.s.name = v; touch(r.id, 'inv:svc:' + r.s.id); } },
+        { key: 'port', label: 'Port', value: (r) => String(r.s.port), edit: (r, v) => { r.s.port = v; touch(r.id, 'inv:port:' + r.s.id); }, width: '90px' },
         { key: 'proto', label: 'Proto', value: (r) => r.s.proto, width: '70px' },
         { key: 'url', label: 'URL', value: (r) => r.s.url, edit: (r, v) => { r.s.url = v; touch(r.id, 'inv:url:' + r.s.id); }, cls: 'mono' },
         { key: 'open', label: '', value: () => '', width: '44px', render: (r, td) => {
           const u = Model.serviceUrl(r.s);
           const b = el('button', 'icon-btn', Icons.svg('externalLink', 14));
           b.disabled = !u;
-          b.title = 'Abrir';
+          b.title = 'Open';
           b.addEventListener('click', () => window.open(u, '_blank', 'noopener'));
           td.appendChild(b);
         } }
       ];
     }
     return [
-      { key: 'a', label: 'Origen', value: (r) => nodeName(r.a) },
-      { key: 'ia', label: 'Interfaz', value: (r) => (r.ia ? r.ia.name : '') },
-      { key: 'b', label: 'Destino', value: (r) => nodeName(r.b) },
-      { key: 'ib', label: 'Interfaz', value: (r) => (r.ib ? r.ib.name : '') },
-      { key: 'medium', label: 'Medio', value: (r) => (MEDIA[r.l.medium] || MEDIA.ethernet).label },
-      { key: 'speed', label: 'Velocidad', value: (r) => r.l.speed },
-      { key: 'label', label: 'Etiqueta', value: (r) => r.l.label, edit: (r, v) => { r.l.label = v; ctx.commit('inv:link:' + r.l.id); ctx.onChanged({ links: true }); } },
+      { key: 'a', label: 'Source', value: (r) => nodeName(r.a) },
+      { key: 'ia', label: 'Interface', value: (r) => (r.ia ? r.ia.name : '') },
+      { key: 'b', label: 'Destination', value: (r) => nodeName(r.b) },
+      { key: 'ib', label: 'Interface', value: (r) => (r.ib ? r.ib.name : '') },
+      { key: 'medium', label: 'Medium', value: (r) => (MEDIA[r.l.medium] || MEDIA.ethernet).label },
+      { key: 'speed', label: 'Speed', value: (r) => r.l.speed },
+      { key: 'label', label: 'Label', value: (r) => r.l.label, edit: (r, v) => { r.l.label = v; ctx.commit('inv:link:' + r.l.id); ctx.onChanged({ links: true }); } },
       { key: 'vlans', label: 'VLANs', value: (r) => r.l.vlans, edit: (r, v) => { r.l.vlans = v; ctx.commit('inv:vlans:' + r.l.id); ctx.onChanged({ links: true }); } }
     ];
   }
@@ -182,13 +182,13 @@
   function renderInventory(container, ctx) {
     const state = ctx.getState();
     container.innerHTML = '';
-    const tabs = [['nodes', 'Nodos', state.nodes.length], ['interfaces', 'Interfaces', state.nodes.reduce((s, n) => s + (Model.typeMeta(n.type).noIface ? 0 : n.interfaces.length), 0)],
-      ['services', 'Servicios', state.nodes.reduce((s, n) => s + n.services.length, 0)], ['links', 'Enlaces', state.links.length]];
+    const tabs = [['nodes', 'Nodes', state.nodes.length], ['interfaces', 'Interfaces', state.nodes.reduce((s, n) => s + (Model.typeMeta(n.type).noIface ? 0 : n.interfaces.length), 0)],
+      ['services', 'Services', state.nodes.reduce((s, n) => s + n.services.length, 0)], ['links', 'Links', state.links.length]];
     const tb = toolbar(
       '<div class="seg">' + tabs.map((t) => '<button type="button" class="seg-btn' + (ui.invTab === t[0] ? ' active' : '') + '" data-tab="' + t[0] + '">' + t[1] + '<span class="seg-count">' + t[2] + '</span></button>').join('') + '</div>' +
-      '<div class="search-box">' + Icons.svg('search', 14) + '<input type="text" placeholder="Filtrar..." value="' + esc(ui.invFilter) + '"/></div>' +
+      '<div class="search-box">' + Icons.svg('search', 14) + '<input type="text" placeholder="Filter..." value="' + esc(ui.invFilter) + '"/></div>' +
       '<span class="toolbar-spacer"></span><span class="toolbar-note" data-role="count"></span>' +
-      '<button type="button" class="btn btn-ghost btn-sm" data-role="csv">' + Icons.svg('download', 13) + '<span>Exportar CSV</span></button>');
+      '<button type="button" class="btn btn-ghost btn-sm" data-role="csv">' + Icons.svg('download', 13) + '<span>Export CSV</span></button>');
     container.appendChild(tb);
     const holder = el('div', 'view-body');
     container.appendChild(holder);
@@ -224,15 +224,15 @@
     }));
 
     container.appendChild(toolbar(
-      '<h2 class="view-title">Redes y direccionamiento</h2><span class="toolbar-spacer"></span>' +
-      (unassigned.length ? '<button type="button" class="btn btn-ghost btn-sm" data-role="detect">' + Icons.svg('wand', 13) + '<span>Detectar redes (' + unassigned.length + ' IPs sin red)</span></button>' : '') +
-      '<button type="button" class="btn btn-primary btn-sm" data-role="new-net">' + Icons.svg('plus', 13) + '<span>Nueva red</span></button>'));
+      '<h2 class="view-title">Networks and addressing</h2><span class="toolbar-spacer"></span>' +
+      (unassigned.length ? '<button type="button" class="btn btn-ghost btn-sm" data-role="detect">' + Icons.svg('wand', 13) + '<span>Detect networks (' + unassigned.length + ' IPs without a network)</span></button>' : '') +
+      '<button type="button" class="btn btn-primary btn-sm" data-role="new-net">' + Icons.svg('plus', 13) + '<span>New network</span></button>'));
     const body = el('div', 'view-body stack');
     container.appendChild(body);
 
-    const netsHead = el('div', 'stack-title', 'Redes (' + state.networks.length + ')');
+    const netsHead = el('div', 'stack-title', 'Networks (' + state.networks.length + ')');
     body.appendChild(netsHead);
-    if (!state.networks.length) body.appendChild(el('div', 'empty-card', 'Todavía no hay redes. Crea una o usa "Detectar redes" para generarlas a partir de las IPs de tus interfaces.'));
+    if (!state.networks.length) body.appendChild(el('div', 'empty-card', 'No networks yet. Create one or use "Detect networks" to generate them from the IPs of your interfaces.'));
     state.networks.forEach((net) => {
       const a = Ipam.analyze(state, net);
       const open = ui.openNet === net.id;
@@ -240,8 +240,8 @@
       card.style.setProperty('--c', net.color);
       card.innerHTML =
         '<button type="button" class="net-card-head"><span class="net-color"></span>' +
-        '<span class="net-name">' + esc(net.name) + (net.inferred ? '<span class="badge warn">inferida</span>' : '') + '</span>' +
-        '<span class="net-meta mono">' + esc(net.cidr && net.cidr !== net.name ? net.cidr : (net.cidr ? '' : 'sin CIDR')) + '</span>' +
+        '<span class="net-name">' + esc(net.name) + (net.inferred ? '<span class="badge warn">inferred</span>' : '') + '</span>' +
+        '<span class="net-meta mono">' + esc(net.cidr && net.cidr !== net.name ? net.cidr : (net.cidr ? '' : 'no CIDR')) + '</span>' +
         (net.vlan ? '<span class="badge">VLAN ' + esc(net.vlan) + '</span>' : '') +
         '<span class="net-use">' + (a.valid ? '<span class="ipam-bar small"><span class="ipam-fill" style="width:' + a.pct + '%"></span></span><span class="net-use-text">' + a.usedCount + '/' + a.usable + '</span>' : '') + '</span>' +
         Icons.svg(open ? 'chevronUp' : 'chevronDown', 14) + '</button>';
@@ -268,7 +268,7 @@
 
     if (unassigned.length) {
       const card = el('div', 'net-card plain');
-      card.innerHTML = '<div class="net-card-head static"><span class="net-name">Sin red asignada (' + unassigned.length + ')</span></div>' +
+      card.innerHTML = '<div class="net-card-head static"><span class="net-name">No network assigned (' + unassigned.length + ')</span></div>' +
         '<div class="member-list pad">' + unassigned.slice(0, 40).map((u) => '<button type="button" class="member-row" data-node="' + esc(u.n.id) + '"><span class="member-ip">' + esc(u.i.ip) + '</span><span class="member-name">' + esc(u.n.name) + '</span><span class="member-iface">' + esc(u.i.name) + '</span></button>').join('') + '</div>';
       card.querySelectorAll('[data-node]').forEach((b) => b.addEventListener('click', () => ctx.onSelectNode(b.dataset.node)));
       body.appendChild(card);
@@ -276,9 +276,9 @@
 
     body.appendChild(el('div', 'stack-title', 'Overlays (' + state.overlays.length + ')'));
     const ovBar = el('div', 'inline-actions');
-    ovBar.innerHTML = '<button type="button" class="btn btn-ghost btn-sm" data-role="new-ov">' + Icons.svg('plus', 13) + '<span>Nuevo overlay</span></button>';
+    ovBar.innerHTML = '<button type="button" class="btn btn-ghost btn-sm" data-role="new-ov">' + Icons.svg('plus', 13) + '<span>New overlay</span></button>';
     body.appendChild(ovBar);
-    if (!state.overlays.length) body.appendChild(el('div', 'empty-card', 'Sin overlays. Los overlays (Tailscale, WireGuard, ZeroTier...) son redes virtuales: se asignan desde la pestaña Overlays de cada nodo.'));
+    if (!state.overlays.length) body.appendChild(el('div', 'empty-card', 'No overlays. Overlays (Tailscale, WireGuard, ZeroTier...) are virtual networks: assign them from the Overlays tab of each node.'));
     state.overlays.forEach((ov) => {
       const members = Ipam.overlayMembers(state, ov);
       const open = ui.openOverlay === ov.id;
@@ -313,7 +313,7 @@
 
     const newNet = container.querySelector('[data-role="new-net"]');
     newNet.addEventListener('click', () => {
-      const net = Factory.network('Red nueva', '', PALETTE[state.networks.length % PALETTE.length]);
+      const net = Factory.network('New network', '', PALETTE[state.networks.length % PALETTE.length]);
       state.networks.push(net);
       ui.openNet = net.id;
       ctx.commit('net-add');
@@ -325,11 +325,11 @@
       const created = NetHub.Migrate.inferNetworks(state);
       ctx.commit('net-detect');
       ctx.onChanged({ data: true });
-      UI.toast(created.length ? created.length + ' redes creadas (se supone /24: revisa la máscara).' : 'No hay IPs nuevas que agrupar.', created.length ? 'success' : 'info');
+      UI.toast(created.length ? created.length + ' networks created (assuming /24: check the mask).' : 'No new IPs to group.', created.length ? 'success' : 'info');
       renderNetworks(container, ctx);
     });
     body.querySelector('[data-role="new-ov"]').addEventListener('click', () => {
-      const ov = Factory.overlay('Overlay nuevo', '#2ad9b8');
+      const ov = Factory.overlay('New overlay', '#2ad9b8');
       state.overlays.push(ov);
       ui.openOverlay = ov.id;
       ctx.commit('ov-add');
@@ -349,26 +349,26 @@
     const withoutPanels = state.nodes.filter((n) => !Model.nodeUrls(n).length && n.type !== 'isp' && n.type !== 'cloud');
 
     container.appendChild(toolbar(
-      '<h2 class="view-title">Paneles</h2>' +
-      '<div class="search-box">' + Icons.svg('search', 14) + '<input type="text" placeholder="Buscar panel, nodo o URL..." value="' + esc(ui.panelsFilter) + '"/></div>' +
-      '<span class="toolbar-spacer"></span><span class="toolbar-note">Agrupar por</span>' +
-      '<div class="seg">' + [['group', 'Grupo'], ['type', 'Tipo'], ['network', 'Red'], ['none', 'Nada']].map((g) => '<button type="button" class="seg-btn' + (ui.panelsGroup === g[0] ? ' active' : '') + '" data-g="' + g[0] + '">' + g[1] + '</button>').join('') + '</div>'));
+      '<h2 class="view-title">Panels</h2>' +
+      '<div class="search-box">' + Icons.svg('search', 14) + '<input type="text" placeholder="Search panel, node or URL..." value="' + esc(ui.panelsFilter) + '"/></div>' +
+      '<span class="toolbar-spacer"></span><span class="toolbar-note">Group by</span>' +
+      '<div class="seg">' + [['group', 'Group'], ['type', 'Type'], ['network', 'Network'], ['none', 'None']].map((g) => '<button type="button" class="seg-btn' + (ui.panelsGroup === g[0] ? ' active' : '') + '" data-g="' + g[0] + '">' + g[1] + '</button>').join('') + '</div>'));
     const body = el('div', 'view-body');
     container.appendChild(body);
 
     const needle = ui.panelsFilter.trim().toLowerCase();
     const filtered = items.filter((it) => !needle || (it.u.name + ' ' + it.n.name + ' ' + it.u.url + ' ' + it.n.role).toLowerCase().includes(needle));
     const groupKey = (it) => {
-      if (ui.panelsGroup === 'group') { const g = state.groups.find((x) => x.id === (ix.top(it.n.id) || {}).groupId); return g ? g.name || 'Grupo' : 'Sin grupo'; }
+      if (ui.panelsGroup === 'group') { const g = state.groups.find((x) => x.id === (ix.top(it.n.id) || {}).groupId); return g ? g.name || 'Group' : 'No group'; }
       if (ui.panelsGroup === 'type') return Model.typeMeta(it.n.type).label;
-      if (ui.panelsGroup === 'network') { const nets = Model.networksOfNode(state, it.n); return nets.length ? nets[0].name : 'Sin red'; }
-      return 'Todos';
+      if (ui.panelsGroup === 'network') { const nets = Model.networksOfNode(state, it.n); return nets.length ? nets[0].name : 'No network'; }
+      return 'All';
     };
     const groups = new Map();
     filtered.forEach((it) => { const k = groupKey(it); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(it); });
 
     if (!filtered.length) {
-      body.appendChild(el('div', 'empty-card', items.length ? 'Ningún panel coincide con la búsqueda.' : 'Todavía no hay paneles. Añade una URL a los servicios de un nodo (pestaña Servicios) y aparecerá aquí.'));
+      body.appendChild(el('div', 'empty-card', items.length ? 'No panel matches the search.' : 'No panels yet. Add a URL to the services of a node (Services tab) and it will appear here.'));
     }
     Array.from(groups.keys()).sort((a, b) => collator.compare(a, b)).forEach((k) => {
       const sec = el('div', 'launch-section');
@@ -380,7 +380,7 @@
         tile.innerHTML = '<a class="launch-main" href="' + esc(it.u.url) + '" target="_blank" rel="noopener noreferrer"><span class="launch-icon">' + Icons.svg(meta.icon, 18) + '</span>' +
           '<span class="launch-text"><span class="launch-title">' + esc(it.u.name) + '</span><span class="launch-sub">' + esc(it.n.name + (it.n.role ? ' · ' + it.n.role : '')) + '</span>' +
           '<span class="launch-url mono">' + esc(it.u.url.replace(/^https?:\/\//, '')) + '</span></span>' + Icons.svg('externalLink', 14) + '</a>' +
-          '<button type="button" class="icon-btn" title="Ver el nodo">' + Icons.svg('chevronRight', 14) + '</button>';
+          '<button type="button" class="icon-btn" title="View node">' + Icons.svg('chevronRight', 14) + '</button>';
         tile.querySelector('button').addEventListener('click', () => ctx.onSelectNode(it.n.id));
         grid.appendChild(tile);
       });
@@ -389,7 +389,7 @@
     });
     if (withoutPanels.length && !needle) {
       const sec = el('div', 'launch-section');
-      sec.appendChild(el('div', 'stack-title', 'Nodos sin panel (' + withoutPanels.length + ')'));
+      sec.appendChild(el('div', 'stack-title', 'Nodes without a panel (' + withoutPanels.length + ')'));
       const chips = el('div', 'chip-cloud');
       withoutPanels.forEach((n) => {
         const b = el('button', 'chip-btn', esc(n.name));

@@ -225,7 +225,7 @@
     }
     if (!index || !state) {
       const legacy = lsRead(LEGACY_KEY);
-      const name = 'Mi red';
+      const name = 'My network';
       if (legacy && Array.isArray(legacy.devices) && legacy.devices.length) {
         try {
           state = Migrate.normalize(legacy);

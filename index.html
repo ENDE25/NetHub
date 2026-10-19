@@ -1,29 +1,29 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="referrer" content="no-referrer" />
 <title>NetHub</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-<link rel="stylesheet" href="css/style.css?v=20261019d" />
+<link rel="stylesheet" href="css/style.css?v=20261019e" />
 </head>
 <body>
 
 <div class="app" id="app">
   <header class="topbar">
-    <button class="icon-btn" id="btn-library" title="Mostrar u ocultar la biblioteca"></button>
+    <button class="icon-btn" id="btn-library" title="Show or hide the library"></button>
     <div class="brand" id="brand-logo"></div>
-    <button class="map-switch" id="map-switch" title="Cambiar de mapa"><span id="map-name"></span></button>
+    <button class="map-switch" id="map-switch" title="Switch map"><span id="map-name"></span></button>
     <nav class="view-tabs" id="view-tabs"></nav>
     <span class="topbar-spacer"></span>
-    <button class="search-trigger" id="btn-search" title="Buscar y comandos (Ctrl+K)"></button>
+    <button class="search-trigger" id="btn-search" title="Search and commands (Ctrl+K)"></button>
     <div class="btn-group">
-      <button class="icon-btn" id="btn-undo" title="Deshacer (Ctrl+Z)"></button>
-      <button class="icon-btn" id="btn-redo" title="Rehacer (Ctrl+Mayús+Z)"></button>
+      <button class="icon-btn" id="btn-undo" title="Undo (Ctrl+Z)"></button>
+      <button class="icon-btn" id="btn-redo" title="Redo (Ctrl+Shift+Z)"></button>
     </div>
-    <button class="btn btn-ghost btn-validate" id="btn-validate" title="Comprobar la red"></button>
-    <button class="icon-btn" id="btn-menu" title="Archivo, exportar e importar"></button>
+    <button class="btn btn-ghost btn-validate" id="btn-validate" title="Check the network"></button>
+    <button class="icon-btn" id="btn-menu" title="File, export and import"></button>
   </header>
 
   <div class="app-body">
@@ -42,8 +42,8 @@
           <div class="marquee" id="marquee" hidden></div>
           <div class="empty-hint" id="empty-hint" hidden>
             <div class="empty-hint-icon"></div>
-            <h2>Este mapa está vacío</h2>
-            <p>Arrastra un dispositivo desde la biblioteca de la izquierda, o pulsa <kbd>Ctrl</kbd>+<kbd>K</kbd> para ver los comandos.</p>
+            <h2>This map is empty</h2>
+            <p>Drag a device from the library on the left, or press <kbd>Ctrl</kbd>+<kbd>K</kbd> to see the commands.</p>
           </div>
           <div class="float float-layers" id="layer-switch"></div>
           <div class="float float-selection" id="selection-bar" hidden></div>
@@ -63,23 +63,23 @@
 
 <input type="file" id="file-import" accept=".json,.xml,.csv,application/json,text/xml,text/csv" hidden />
 
-<script src="js/icons.js?v=20261019d"></script>
-<script src="js/netutil.js?v=20261019d"></script>
-<script src="js/ui.js?v=20261019d"></script>
-<script src="js/isp.js?v=20261019d"></script>
-<script src="js/state.js?v=20261019d"></script>
-<script src="js/migrate.js?v=20261019d"></script>
-<script src="js/storage.js?v=20261019d"></script>
-<script src="js/store.js?v=20261019d"></script>
-<script src="js/ipam.js?v=20261019d"></script>
-<script src="js/validate.js?v=20261019d"></script>
-<script src="js/layout.js?v=20261019d"></script>
-<script src="js/topology.js?v=20261019d"></script>
-<script src="js/panel.js?v=20261019d"></script>
-<script src="js/views.js?v=20261019d"></script>
-<script src="js/exporters.js?v=20261019d"></script>
-<script src="js/importers.js?v=20261019d"></script>
-<script src="js/search.js?v=20261019d"></script>
-<script src="js/app.js?v=20261019d"></script>
+<script src="js/icons.js?v=20261019e"></script>
+<script src="js/netutil.js?v=20261019e"></script>
+<script src="js/ui.js?v=20261019e"></script>
+<script src="js/isp.js?v=20261019e"></script>
+<script src="js/state.js?v=20261019e"></script>
+<script src="js/migrate.js?v=20261019e"></script>
+<script src="js/storage.js?v=20261019e"></script>
+<script src="js/store.js?v=20261019e"></script>
+<script src="js/ipam.js?v=20261019e"></script>
+<script src="js/validate.js?v=20261019e"></script>
+<script src="js/layout.js?v=20261019e"></script>
+<script src="js/topology.js?v=20261019e"></script>
+<script src="js/panel.js?v=20261019e"></script>
+<script src="js/views.js?v=20261019e"></script>
+<script src="js/exporters.js?v=20261019e"></script>
+<script src="js/importers.js?v=20261019e"></script>
+<script src="js/search.js?v=20261019e"></script>
+<script src="js/app.js?v=20261019e"></script>
 </body>
 </html>

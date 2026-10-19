@@ -30,7 +30,7 @@
     const hosts = [];
     if (j.Self) hosts.push(j.Self);
     Object.keys(j.Peer || {}).forEach((k) => hosts.push(j.Peer[k]));
-    if (!hosts.length) throw new Error('El JSON no contiene dispositivos de Tailscale.');
+    if (!hosts.length) throw new Error('The JSON contains no Tailscale devices.');
     const overlay = { name: 'Tailscale', cidr: '100.64.0.0/10', color: '#2ad9b8' };
     return {
       overlay,
@@ -49,7 +49,7 @@
 
   function fromNmap(text) {
     const doc = new DOMParser().parseFromString(text, 'text/xml');
-    if (doc.querySelector('parsererror')) throw new Error('El XML de nmap no es válido.');
+    if (doc.querySelector('parsererror')) throw new Error('The nmap XML is not valid.');
     const items = [];
     doc.querySelectorAll('host').forEach((h) => {
       const st = h.querySelector('status');
@@ -85,7 +85,7 @@
       else if (open.has(8006)) type = 'server';
       items.push({ name: hn ? hn.getAttribute('name') : ip, type, os: osm ? osm.getAttribute('name') : '', model: vendor, mac, services, tags: [], ifaces: [{ kind: 'ethernet', ip, mode: 'static' }] });
     });
-    if (!items.length) throw new Error('No hay equipos activos en el XML de nmap.');
+    if (!items.length) throw new Error('There are no active hosts in the nmap XML.');
     return { items };
   }
 
@@ -116,13 +116,13 @@
     const first = clean.split(/\r?\n/)[0] || '';
     const delim = (first.match(/;/g) || []).length > (first.match(/,/g) || []).length ? ';' : ',';
     const rows = parseCsv(clean, delim);
-    if (rows.length < 2) throw new Error('El CSV necesita una fila de cabecera y al menos un equipo.');
+    if (rows.length < 2) throw new Error('The CSV needs a header row and at least one host.');
     const head = rows[0].map((h) => h.trim().toLowerCase());
     const col = (...names) => head.findIndex((h) => names.includes(h));
     const cName = col('name', 'nombre', 'hostname', 'host'), cIp = col('ip', 'ip address', 'direccion', 'dirección', 'address');
     const cMac = col('mac'), cType = col('type', 'tipo'), cOs = col('os', 'so', 'sistema operativo');
     const cModel = col('model', 'modelo'), cNotes = col('notes', 'notas'), cUrl = col('url', 'panel', 'web'), cPort = col('port', 'puerto');
-    if (cName === -1 && cIp === -1) throw new Error('El CSV necesita al menos una columna "nombre" o "ip".');
+    if (cName === -1 && cIp === -1) throw new Error('The CSV needs at least a "name" or "ip" column.');
     const typeFor = (v) => {
       const s = String(v || '').trim().toLowerCase();
       return Object.keys(NODE_TYPES).find((k) => k === s || NODE_TYPES[k].label.toLowerCase() === s) || 'host';
