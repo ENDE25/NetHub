@@ -328,13 +328,13 @@ a { color: var(--accent); }
   transition: box-shadow 0.15s, border-color 0.15s;
 }
 .node.device-host {
-  background: linear-gradient(180deg, #1f5bd7, #1747b8);
-  border-color: #60a5fa;
+  background: linear-gradient(180deg, #1c3f8f, #152f6e);
+  border-color: #4a76c9;
   color: #ffffff;
 }
 .node.device-host:hover {
-  border-color: #93c5fd;
-  box-shadow: 0 10px 28px -10px rgba(29, 78, 216, 0.7);
+  border-color: #7096e0;
+  box-shadow: 0 10px 28px -10px rgba(28, 63, 143, 0.7);
 }
 .node.device-host .node-icon {
   background: rgba(255, 255, 255, 0.16);
@@ -369,7 +369,7 @@ a { color: var(--accent); }
 .node.device-host.has-vpn:hover,
 .node.device-host.has-vpn.selected,
 .node.device-host.has-vpn.connect-target {
-  background: linear-gradient(180deg, #1f5bd7, #1747b8) padding-box, var(--vpn-ring) border-box;
+  background: linear-gradient(180deg, #1c3f8f, #152f6e) padding-box, var(--vpn-ring) border-box;
 }
 .node:hover { border-color: #3a4759; box-shadow: var(--shadow-md); }
 .node.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-md); }
