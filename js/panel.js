@@ -461,13 +461,19 @@
     if (par) par.interfaces.filter((x) => x.kind !== 'tunnel').forEach((x) => parentOpts.push({ v: x.id, l: par.name + ': ' + (x.name || '(sin nombre)') + (x.ip ? ' - ' + x.ip : '') }));
     n.interfaces.filter((x) => x.id !== iface.id && (x.kind === 'bridge' || x.kind === 'bond')).forEach((x) => parentOpts.push({ v: x.id, l: 'Este nodo: ' + (x.name || '(sin nombre)') }));
 
+    const netOpts = state.networks.map((x) => ({ v: x.id, l: x.name + (x.cidr && x.cidr !== x.name ? ' (' + x.cidr + ')' : '') }));
+    // With DHCP the address is not known, so the network it belongs to is chosen here and the node still shows up in it.
+    const dhcpLine = iface.mode === 'dhcp' && iface.kind !== 'tunnel'
+      ? '<div class="iface-dhcp"><span>Red que le da el DHCP</span>' +
+        selectHtml('networkId', [{ v: '', l: state.networks.length ? 'Sin asignar' : 'No hay redes: créalas en Redes' }].concat(netOpts), iface.networkId) + '</div>'
+      : '';
     const details = !open ? '' :
       '<div class="iface-details">' +
         '<div class="field-row">' + field('Tipo', selectHtml('kind', Object.keys(IFACE_KINDS).map((k) => ({ v: k, l: IFACE_KINDS[k].label })), iface.kind)) +
           field('MAC', textInput('mac', iface.mac, 'aa:bb:cc:dd:ee:ff', 'mono')) + '</div>' +
         '<div class="field-row">' + field('Gateway', textInput('gateway', iface.gateway, '192.168.1.1', 'mono')) +
           field('VLAN', textInput('vlan', iface.vlan, 'ej. 10 o 10,20,30')) + '</div>' +
-        '<div class="field-row">' + field('Red', selectHtml('networkId', [{ v: '', l: 'Automática (según su IP)' }].concat(state.networks.map((x) => ({ v: x.id, l: x.name + (x.cidr ? ' (' + x.cidr + ')' : '') }))), iface.networkId)) +
+        '<div class="field-row">' + (iface.mode === 'dhcp' ? '' : field('Red', selectHtml('networkId', [{ v: '', l: 'Automática (según su IP)' }].concat(netOpts), iface.networkId))) +
           field('Velocidad', selectHtml('speed', [{ v: '', l: '-' }].concat(SPEEDS.map((s) => ({ v: s, l: s }))), iface.speed)) + '</div>' +
         (iface.kind === 'wifi' ? '<div class="field-row">' + field('SSID', textInput('ssid', iface.ssid, 'Nombre de la red Wi-Fi')) +
           field('Rol', selectHtml('wifiRole', [{ v: '', l: '-' }, { v: 'ap', l: 'Punto de acceso' }, { v: 'client', l: 'Cliente' }], iface.wifiRole)) + '</div>' : '') +
@@ -485,7 +491,7 @@
         '<input type="text" data-f="ip" class="iface-ip' + (looksLikeBadIp(iface.ip) ? ' invalid' : '') + '" value="' + esc(iface.ip) + '" placeholder="' + (iface.mode === 'dhcp' ? 'IP asignada (opcional)' : 'IP o IP/24') + '" autocomplete="off" spellcheck="false"/>' +
         selectHtml('mode', Object.keys(IP_MODES).map((k) => ({ v: k, l: IP_MODES[k] })), iface.mode, 'iface-mode') +
         '<button type="button" class="icon-btn danger" data-act="del" title="Eliminar interfaz">' + Icons.svg('close', 13) + '</button>' +
-      '</div>' + details;
+      '</div>' + dhcpLine + details;
 
     el.querySelector('[data-act="expand"]').addEventListener('click', () => {
       if (self.openIfaces.has(iface.id)) self.openIfaces.delete(iface.id); else self.openIfaces.add(iface.id);

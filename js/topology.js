@@ -119,6 +119,18 @@
     return lower.concat(upper);
   }
 
+  // Outward offset of a point set by `r` (corners become arcs), so the outline can be a thin line at the real edge.
+  function roundPad(points, r) {
+    const out = [];
+    points.forEach((p) => {
+      for (let k = 0; k < 16; k++) {
+        const a = (k / 16) * Math.PI * 2;
+        out.push({ x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r });
+      }
+    });
+    return out;
+  }
+
   function Topology(opts) {
     this.viewport = opts.viewport;
     this.world = opts.world;
@@ -1026,11 +1038,11 @@
       if (!pts.length) return;
       const focused = this.focus && this.focus.id === def.id;
       const faded = this.focus && !focused;
-      const hull = convexHull(pts);
+      const hull = convexHull(roundPad(pts, 20));
       const poly = svgEl('polygon', { points: hull.map((p) => p.x + ',' + p.y).join(' '), style: '--c:' + def.color }, 'segment' + (layer === 'overlay' ? ' overlay' : '') + (faded ? ' faded' : '') + (focused ? ' focused' : ''));
       el.appendChild(poly);
       const minY = Math.min.apply(null, hull.map((p) => p.y)), minX = Math.min.apply(null, hull.map((p) => p.x));
-      const label = svgEl('text', { x: minX - 14, y: minY - 30, style: '--c:' + def.color }, 'segment-label' + (faded ? ' faded' : ''));
+      const label = svgEl('text', { x: minX + 6, y: minY - 8, style: '--c:' + def.color }, 'segment-label' + (faded ? ' faded' : ''));
       label.textContent = def.name + (def.cidr && def.cidr !== def.name ? '  ' + def.cidr : '');
       el.appendChild(label);
     });
@@ -1054,13 +1066,11 @@
   Topology.prototype._resolveEnd = function (ep) {
     const node = this.ix.get(ep.nodeId);
     if (!node) return null;
-    let n = node, guard = 0, key = null, box = null;
-    while (n && guard++ < 64) {
-      if (this.boxes[n.id]) { key = n.id; box = this.boxes[n.id]; break; }
-      if (n.parentId) { n = this.ix.get(n.parentId); continue; }
-      if (n.groupId && this.boxes['g:' + n.groupId]) { key = 'g:' + n.groupId; box = this.boxes[key]; }
-      break;
-    }
+    let key = null, box = null;
+    if (this.boxes[node.id]) { key = node.id; box = this.boxes[node.id]; }
+    // Something hidden inside a collapsed host shows no cable at all: the host card only carries its own links.
+    // A top-level node inside a collapsed group does: its links go to the group card.
+    else if (!node.parentId && node.groupId && this.boxes['g:' + node.groupId]) { key = 'g:' + node.groupId; box = this.boxes[key]; }
     if (!box) return null;
     const iface = (node.interfaces || []).find((i) => i.id === ep.ifaceId) || null;
     const vis = key.indexOf('g:') === 0 ? null : this.ix.get(key);

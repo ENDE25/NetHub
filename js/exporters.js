@@ -214,7 +214,7 @@
     topology.segmentsLayer.querySelectorAll('polygon').forEach((p) => {
       const m = /--c:\s*(#[0-9a-f]{6})/i.exec(p.getAttribute('style') || '');
       const c = m ? m[1] : '#5b8cff';
-      out.push('<polygon points="' + p.getAttribute('points') + '" fill="' + c + '" fill-opacity="0.08" stroke="' + c + '" stroke-opacity="0.3" stroke-width="36" stroke-linejoin="round"/>');
+      out.push('<polygon points="' + p.getAttribute('points') + '" fill="' + c + '" fill-opacity="0.07" stroke="' + c + '" stroke-opacity="0.5" stroke-width="1.2" stroke-linejoin="round"/>');
     });
     topology.segmentsLayer.querySelectorAll('text').forEach((t) => {
       const m = /--c:\s*(#[0-9a-f]{6})/i.exec(t.getAttribute('style') || '');

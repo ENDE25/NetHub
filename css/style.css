@@ -416,9 +416,9 @@ kbd {
 .canvas-viewport[data-lod="far"] .link-caption-bg { display: none; }
 
 /* Logical / overlay hulls */
-.segment { fill: var(--c); fill-opacity: 0.07; stroke: var(--c); stroke-opacity: 0.2; stroke-width: 32; stroke-linejoin: round; pointer-events: none; transition: opacity 0.15s; }
-.segment.overlay { stroke-width: 26; stroke-opacity: 0.18; }
-.segment.focused { fill-opacity: 0.16; stroke-opacity: 0.5; }
+.segment { fill: var(--c); fill-opacity: 0.07; stroke: var(--c); stroke-opacity: 0.5; stroke-width: 1.2; stroke-linejoin: round; pointer-events: none; transition: opacity 0.15s; }
+.segment.overlay { stroke-dasharray: 5 4; stroke-opacity: 0.55; }
+.segment.focused { fill-opacity: 0.15; stroke-opacity: 0.9; stroke-width: 1.8; }
 .segment.faded { opacity: 0.22; }
 .segment-label { fill: var(--c); font-size: 13px; font-weight: 700; pointer-events: none; }
 .segment-label.faded { opacity: 0.3; }
@@ -676,6 +676,9 @@ input[type="color"] { width: 64px; height: 36px; padding: 3px; background: var(-
 .iface-main input, .iface-main select { padding: 6px 8px; font-size: 12.5px; }
 .iface-main .iface-ip { font-family: var(--font-mono); }
 .iface-main select { padding-right: 20px; background-position: calc(100% - 11px) 55%, calc(100% - 6px) 55%; }
+.iface-dhcp { display: flex; align-items: center; gap: 8px; padding: 0 8px 8px; font-size: 11.5px; color: var(--text-dim); }
+.iface-dhcp span { white-space: nowrap; }
+.iface-dhcp select { flex: 1; padding: 5px 24px 5px 8px; font-size: 12px; }
 .iface-details { display: flex; flex-direction: column; gap: 12px; padding: 12px 10px 12px; border-top: 1px solid var(--border); }
 
 /* services */
