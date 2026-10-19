@@ -388,6 +388,8 @@ kbd {
 @keyframes link-dash-flow { to { stroke-dashoffset: -13; } }
 /* Cables of VMs/containers that live inside another machine: grey and dashed */
 .link-g.nested .link-line { stroke: #6f7b8d !important; stroke-dasharray: 6 5; stroke-linecap: butt; stroke-width: 2; animation: none; }
+/* a nested wireless cable stays grey but keeps the flowing animation (dash length 7+6 matches the animation offset) */
+.link-g.nested.m-wifi .link-line { stroke-dasharray: 7 6; animation: link-dash-flow 0.9s linear infinite; }
 .link-g.hot .link-line { stroke-width: 3; }
 .link-g.selected .link-line { stroke: #dce8ff !important; stroke-width: 3; filter: drop-shadow(0 0 5px rgba(170, 200, 255, 0.9)); }
 .link-g.nested.selected .link-line { stroke: #dce8ff !important; }
