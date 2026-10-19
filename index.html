@@ -3,69 +3,83 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="referrer" content="no-referrer" />
 <title>NetHub</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
 <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 
-<header class="app-header">
-  <div class="brand" id="brand-logo"></div>
-
-  <div class="device-palette" id="device-palette"></div>
-
-  <div class="toolbar-actions">
+<div class="app" id="app">
+  <header class="topbar">
+    <button class="icon-btn" id="btn-library" title="Mostrar u ocultar la biblioteca"></button>
+    <div class="brand" id="brand-logo"></div>
+    <button class="map-switch" id="map-switch" title="Cambiar de mapa"><span id="map-name"></span></button>
+    <nav class="view-tabs" id="view-tabs"></nav>
+    <span class="topbar-spacer"></span>
+    <button class="search-trigger" id="btn-search" title="Buscar y comandos (Ctrl+K)"></button>
     <div class="btn-group">
-      <button class="icon-btn" id="btn-zoom-out" title="Alejar"></button>
-      <button class="icon-btn" id="btn-fit" title="Ajustar a la vista"></button>
-      <button class="icon-btn" id="btn-zoom-in" title="Acercar"></button>
+      <button class="icon-btn" id="btn-undo" title="Deshacer (Ctrl+Z)"></button>
+      <button class="icon-btn" id="btn-redo" title="Rehacer (Ctrl+Mayús+Z)"></button>
     </div>
-    <span class="toolbar-divider"></span>
-    <button class="btn btn-ghost" id="btn-import" title="Importar topolog&iacute;a desde JSON"></button>
-    <input type="file" id="file-import" accept="application/json,.json" hidden />
-    <button class="btn btn-ghost" id="btn-export" title="Exportar topolog&iacute;a a JSON"></button>
-    <span class="toolbar-divider"></span>
-    <button class="btn btn-danger-ghost" id="btn-clear" title="Borrar todos los datos guardados"></button>
-  </div>
-</header>
+    <button class="btn btn-ghost btn-validate" id="btn-validate" title="Comprobar la red"></button>
+    <button class="icon-btn" id="btn-menu" title="Archivo, exportar e importar"></button>
+  </header>
 
-<main class="app-main">
-  <div class="canvas-viewport" id="canvas-viewport">
-    <div class="canvas-world" id="canvas-world">
-      <svg class="links-layer" id="links-layer"></svg>
-      <div class="nodes-layer" id="nodes-layer"></div>
-      <svg class="links-layer" id="elevated-links-layer"></svg>
-    </div>
-    <div class="link-toolbar-layer" id="link-toolbar-layer"></div>
-    <div class="empty-hint" id="empty-hint" hidden>
-      <div class="empty-hint-icon"></div>
-      <h2>Tu topolog&iacute;a est&aacute; vac&iacute;a</h2>
-      <p>A&ntilde;ade tu primer dispositivo desde la barra superior para empezar a construir el mapa de tu red.</p>
-    </div>
+  <div class="app-body">
+    <aside class="library" id="library"></aside>
+
+    <main class="stage" id="stage">
+      <section class="view view-map" id="view-map">
+        <div class="canvas-viewport" id="canvas-viewport">
+          <div class="canvas-world" id="canvas-world">
+            <div class="groups-layer" id="groups-layer"></div>
+            <svg class="links-layer" id="segments-layer"></svg>
+            <svg class="links-layer" id="links-behind"></svg>
+            <div class="nodes-layer" id="nodes-layer"></div>
+            <svg class="links-layer" id="links-above"></svg>
+          </div>
+          <div class="marquee" id="marquee" hidden></div>
+          <div class="empty-hint" id="empty-hint" hidden>
+            <div class="empty-hint-icon"></div>
+            <h2>Este mapa está vacío</h2>
+            <p>Arrastra un dispositivo desde la biblioteca de la izquierda, o pulsa <kbd>Ctrl</kbd>+<kbd>K</kbd> para ver los comandos.</p>
+          </div>
+          <div class="float float-layers" id="layer-switch"></div>
+          <div class="float float-selection" id="selection-bar" hidden></div>
+          <div class="float float-zoom" id="zoom-controls"></div>
+          <div class="float float-legend" id="legend" hidden></div>
+        </div>
+      </section>
+      <section class="view view-flow" id="view-inventory" hidden></section>
+      <section class="view view-flow" id="view-networks" hidden></section>
+      <section class="view view-flow" id="view-panels" hidden></section>
+      <aside class="side-panel" id="side-panel"></aside>
+    </main>
   </div>
 
-  <aside class="side-panel" id="side-panel"></aside>
-</main>
+  <footer class="statusbar" id="statusbar"></footer>
+</div>
+
+<input type="file" id="file-import" accept=".json,.xml,.csv,application/json,text/xml,text/csv" hidden />
 
 <script src="js/icons.js"></script>
+<script src="js/netutil.js"></script>
 <script src="js/ui.js"></script>
-<script src="js/storage.js"></script>
+<script src="js/isp.js"></script>
 <script src="js/state.js"></script>
+<script src="js/migrate.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ipam.js"></script>
+<script src="js/validate.js"></script>
+<script src="js/layout.js"></script>
 <script src="js/topology.js"></script>
 <script src="js/panel.js"></script>
+<script src="js/views.js"></script>
+<script src="js/exporters.js"></script>
+<script src="js/importers.js"></script>
+<script src="js/search.js"></script>
 <script src="js/app.js"></script>
-<script>
-  (function () {
-    var Icons = window.NetHub.Icons;
-    document.getElementById('brand-logo').innerHTML = Icons.svg('network', 22) + '<span>NetHub</span>';
-    document.getElementById('btn-zoom-out').innerHTML = Icons.svg('zoomOut', 16);
-    document.getElementById('btn-fit').innerHTML = Icons.svg('fit', 16);
-    document.getElementById('btn-zoom-in').innerHTML = Icons.svg('zoomIn', 16);
-    document.getElementById('btn-import').innerHTML = Icons.svg('upload', 15) + '<span>Importar</span>';
-    document.getElementById('btn-export').innerHTML = Icons.svg('download', 15) + '<span>Exportar</span>';
-    document.getElementById('btn-clear').innerHTML = Icons.svg('trash', 15) + '<span>Borrar datos</span>';
-    document.querySelector('.empty-hint-icon').innerHTML = Icons.svg('network', 30);
-  })();
-</script>
 </body>
 </html>
