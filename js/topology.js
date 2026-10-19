@@ -442,7 +442,8 @@
 
   // A Grupo is a container card: dashed, optional name, any node can be dropped inside and it grows to fit them.
   Topology.prototype._buildGroupNode = function (n, depth, el, kids) {
-    const cols = Math.min(4, Math.max(1, Math.ceil(Math.sqrt(kids.length))));
+    // how the content is arranged: a square-ish grid (default), a single row or a single column
+    const cols = n.layout === 'row' ? Math.max(1, kids.length) : n.layout === 'column' ? 1 : Math.min(4, Math.max(1, Math.ceil(Math.sqrt(kids.length))));
     el.className = (depth === 0 ? 'node' : 'node-child') + ' node-group';
     const toggle = kids.length
       ? '<button type="button" class="node-toggle" data-act="toggle" title="' + (n.collapsed ? 'Expandir' : 'Colapsar') + ' contenido">' + Icons.svg(n.collapsed ? 'chevronRight' : 'chevronDown', 13) + '</button>'

@@ -229,7 +229,8 @@
 
   // After editing node data: commit (typing in the same field merges into one undo step) and refresh the canvas.
   Panel.prototype._changed = function (nodeId, structural, key, full) {
-    this.commit(key || ('node:' + nodeId));
+    // key === false: a discrete choice (select), always its own undo step; otherwise typing merges per field
+    this.commit(key === false ? undefined : (key || ('node:' + nodeId)));
     this.onChanged({ nodeId, structural: !!structural, full: !!full });
     if (structural) this._render();
   };
@@ -282,10 +283,11 @@
     const wrap = document.createElement('div');
     wrap.className = 'details-pane';
     wrap.innerHTML = field('Nombre', textInput('name', n.name, 'Opcional'), 'Arrastra nodos sobre el grupo para meterlos dentro; se ajusta solo al tamaño') +
+      field('Disposición del contenido', selectHtml('layout', [{ v: 'grid', l: 'Rejilla (automática)' }, { v: 'column', l: 'Vertical (una columna)' }, { v: 'row', l: 'Horizontal (una fila)' }], n.layout || 'grid')) +
       '<button class="btn btn-danger btn-block danger-zone" data-role="delete">' + Icons.svg('trash', 14) + '<span>Eliminar grupo (los nodos se conservan)</span></button>';
-    bindFields(wrap, n, () => {
+    bindFields(wrap, n, (key) => {
       self.root.querySelector('.sp-name').textContent = n.name || 'Grupo';
-      self._changed(n.id, false);
+      self._changed(n.id, false, key === 'layout' ? false : undefined);
     });
     wrap.querySelector('[data-role="delete"]').addEventListener('click', () => self.onDeleteNode(n.id));
     this.body.innerHTML = '';

@@ -214,6 +214,7 @@
     n.tags = arr(raw.tags).map((t) => str(t).trim()).filter(Boolean);
     n.groupId = str(raw.groupId);
     n.collapsed = !!raw.collapsed;
+    n.layout = ['grid', 'row', 'column'].includes(raw.layout) ? raw.layout : 'grid';
     n.notes = str(raw.notes);
     n.fields = arr(raw.fields).filter(isObj).map((f) => ({ k: str(f.k), v: str(f.v) }));
     n.isp = str(raw.isp);
