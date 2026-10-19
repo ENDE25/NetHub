@@ -212,7 +212,7 @@
     this.viewport.style.backgroundPosition = v.x + 'px ' + v.y + 'px';
     const size = 26 * v.zoom;
     this.viewport.style.backgroundSize = size + 'px ' + size + 'px';
-    this.viewport.dataset.lod = v.zoom < 0.5 ? 'far' : 'near';
+    this.viewport.dataset.lod = v.zoom < 0.35 ? 'far' : 'near';
     this.viewport.dataset.layer = this.layer();
   };
 
@@ -1179,9 +1179,8 @@
     const self = this;
     const link = g.link;
     const layer = g.nested ? this.linksAbove : this.linksBehind;
-    const dense = Math.min(g.spacingA || 99, g.spacingB || 99) < 24;
-    const cls = 'link-g m-' + link.medium + (link.id === this.selLink ? ' selected' : '') + (this._hot.has(link.id) ? ' hot' : '') +
-      (g.nested ? ' nested' : '') + (dense ? ' dense' : '');
+    const cls = 'link-g m-' + link.medium + (link.id === this.selLink ? ' selected' : '') + (this._hot.has(link.id) ? ' hot' : '')+
+      (g.nested ? ' nested' : '');
     const gEl = svgEl('g', { 'data-id': link.id }, cls);
     const color = this._linkColor(g);
     const path = svgEl('path', { d: g.d, style: 'stroke:' + color }, 'link-line');
@@ -1204,16 +1203,16 @@
       layer.appendChild(gEl);
     }
 
-    [['A', g.ea, g.pA, g.dA], ['B', g.eb, g.pB, g.dB]].forEach(([, e, p, d]) => this._drawTags(gEl, e, p, d));
+    [['A', g.ea, g.pA, g.dA, g.spacingA], ['B', g.eb, g.pB, g.dB, g.spacingB]].forEach(([, e, p, d, sp]) => this._drawTags(gEl, e, p, d, (sp || 99) < 24));
   };
 
   // Interface name and IP right next to where the cable leaves the node, like a classic network diagram.
-  Topology.prototype._drawTags = function (gEl, e, p, d) {
+  Topology.prototype._drawTags = function (gEl, e, p, d, crowded) {
     const iface = e.iface;
     if (!iface) return;
+    if (Model.typeMeta(e.node.type).noIface) return;
     const ipText = Model.addrText(iface);
-    const isIsp = e.node.type === 'isp';
-    const name = isIsp ? '' : iface.name;
+    const name = iface.name;
     if (!name && !ipText) return;
     const mk = (text, cls, x, y, anchor) => {
       const t = svgEl('text', { x, y, 'text-anchor': anchor, 'dominant-baseline': 'central' }, 'link-tag ' + cls);
@@ -1223,8 +1222,14 @@
     if (d.x !== 0) {
       const anchor = d.x > 0 ? 'start' : 'end';
       const x = p.x + d.x * 7;
-      if (name) mk(name, 'iface-tag', x, p.y - 8, anchor);
-      if (ipText) mk(ipText, 'ip-tag', x, p.y + 8, anchor);
+      // links packed on one edge are too close for two lines each: show name and IP on one
+      if (crowded) mk([name, ipText].filter(Boolean).join(' '), 'ip-tag', x, p.y, anchor);
+      else {
+        if (name) mk(name, 'iface-tag', x, p.y - 8, anchor);
+        if (ipText) mk(ipText, 'ip-tag', x, p.y + 8, anchor);
+      }
+    } else if (crowded) {
+      mk(ipText || name, 'ip-tag', p.x + 6, p.y + d.y * 10, 'start');
     } else {
       const y1 = p.y + d.y * 10, y2 = p.y + d.y * 22;
       if (name) mk(name, 'iface-tag', p.x + 6, y1, 'start');
@@ -1326,7 +1331,7 @@
         if (l.a.nodeId === target.id) occupied.add(l.a.ifaceId);
         if (l.b.nodeId === target.id) occupied.add(l.b.ifaceId);
       });
-      const free = target.interfaces.find((i) => !occupied.has(i.id));
+      const free = Model.typeMeta(target.type).noIface ? target.interfaces[0] : target.interfaces.find((i) => !occupied.has(i.id));
       if (free) ifaceId = free.id;
       else {
         const i = Factory.iface(NetHub.nextInterfaceName(target, 'eth'));

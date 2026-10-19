@@ -93,7 +93,7 @@
     }
     if (ui.invTab === 'interfaces') {
       const rows = [];
-      state.nodes.forEach((n) => n.interfaces.forEach((i) => {
+      state.nodes.forEach((n) => Model.typeMeta(n.type).noIface ? null : n.interfaces.forEach((i) => {
         const net = Model.networkOf(state, i);
         const ov = i.overlayId && state.overlays.find((o) => o.id === i.overlayId);
         const link = state.links.find((l) => l.a.ifaceId === i.id || l.b.ifaceId === i.id);
@@ -182,7 +182,7 @@
   function renderInventory(container, ctx) {
     const state = ctx.getState();
     container.innerHTML = '';
-    const tabs = [['nodes', 'Nodos', state.nodes.length], ['interfaces', 'Interfaces', state.nodes.reduce((s, n) => s + n.interfaces.length, 0)],
+    const tabs = [['nodes', 'Nodos', state.nodes.length], ['interfaces', 'Interfaces', state.nodes.reduce((s, n) => s + (Model.typeMeta(n.type).noIface ? 0 : n.interfaces.length), 0)],
       ['services', 'Servicios', state.nodes.reduce((s, n) => s + n.services.length, 0)], ['links', 'Enlaces', state.links.length]];
     const tb = toolbar(
       '<div class="seg">' + tabs.map((t) => '<button type="button" class="seg-btn' + (ui.invTab === t[0] ? ' active' : '') + '" data-tab="' + t[0] + '">' + t[1] + '<span class="seg-count">' + t[2] + '</span></button>').join('') + '</div>' +

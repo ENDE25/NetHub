@@ -255,7 +255,8 @@
     this._header(icon, n.name || meta.label, meta.label + (parent ? ' en ' + parent.name : ''), { back: !!parent, actions });
 
     const kids = ix.children(n.id);
-    const tabs = [{ id: 'general', label: 'General' }, { id: 'interfaces', label: 'Interfaces', count: n.interfaces.length }];
+    const tabs = [{ id: 'general', label: 'General' }];
+    if (!meta.noIface) tabs.push({ id: 'interfaces', label: 'Interfaces', count: n.interfaces.length });
     if (n.type !== 'isp') tabs.push({ id: 'services', label: 'Servicios', count: n.services.length });
     if (meta.canHost || kids.length) tabs.push({ id: 'content', label: 'Contenido', count: kids.length });
     tabs.push({ id: 'overlays', label: 'Overlays', count: Model.overlaysOfNode(state, n).length });
@@ -704,9 +705,9 @@
     wrap.innerHTML =
       '<div class="link-ends">' +
         '<div class="link-end"><button type="button" class="member-row" data-node="' + esc(a.id) + '"><span class="member-name">' + esc(a.name) + '</span></button>' +
-          field('Interfaz', '<select data-end="a">' + ifaceOpts(a, true).map((o) => '<option value="' + esc(o.v) + '"' + (o.v === l.a.ifaceId ? ' selected' : '') + '>' + esc(o.l) + '</option>').join('') + '</select>') + '</div>' +
+          (Model.typeMeta(a.type).noIface ? '' : field('Interfaz', '<select data-end="a">' + ifaceOpts(a, true).map((o) => '<option value="' + esc(o.v) + '"' + (o.v === l.a.ifaceId ? ' selected' : '') + '>' + esc(o.l) + '</option>').join('') + '</select>')) + '</div>' +
         '<div class="link-end"><button type="button" class="member-row" data-node="' + esc(b.id) + '"><span class="member-name">' + esc(b.name) + '</span></button>' +
-          field('Interfaz', '<select data-end="b">' + ifaceOpts(b, true).map((o) => '<option value="' + esc(o.v) + '"' + (o.v === l.b.ifaceId ? ' selected' : '') + '>' + esc(o.l) + '</option>').join('') + '</select>') + '</div>' +
+          (Model.typeMeta(b.type).noIface ? '' : field('Interfaz', '<select data-end="b">' + ifaceOpts(b, true).map((o) => '<option value="' + esc(o.v) + '"' + (o.v === l.b.ifaceId ? ' selected' : '') + '>' + esc(o.l) + '</option>').join('') + '</select>')) + '</div>' +
       '</div>' +
       '<div class="field-row">' + field('Medio', selectHtml('medium', Object.keys(MEDIA).map((k) => ({ v: k, l: MEDIA[k].label })), l.medium)) +
         field('Velocidad', selectHtml('speed', [{ v: '', l: '-' }].concat(SPEEDS.map((s) => ({ v: s, l: s }))), l.speed)) + '</div>' +

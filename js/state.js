@@ -44,8 +44,8 @@
     phone:    { label: 'Móvil / tablet',    icon: 'phone',    cat: 'device',  group: 'device', endpoint: true },
     iot:      { label: 'IoT / domótica',    icon: 'iot',      cat: 'device',  group: 'device', endpoint: true },
     ups:      { label: 'SAI / PDU',         icon: 'ups',      cat: 'device',  group: 'device' },
-    isp:      { label: 'ISP / Operador',    icon: 'cloud',    cat: 'wan',     group: 'wan' },
-    cloud:    { label: 'Internet / WAN',    icon: 'cloud',    cat: 'wan',     group: 'wan' },
+    isp:      { label: 'ISP / Operador',    icon: 'cloud',    cat: 'wan',     group: 'wan',       noIface: true },
+    cloud:    { label: 'Internet / WAN',    icon: 'cloud',    cat: 'wan',     group: 'wan',       noIface: true },
     vps:      { label: 'Servidor cloud / VPS', icon: 'vps',   cat: 'wan',     group: 'wan',       canHost: true },
     generic:  { label: 'Otro',              icon: 'generic',  cat: 'other',   group: 'other',     canHost: true }
   };

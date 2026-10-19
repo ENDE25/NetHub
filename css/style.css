@@ -389,8 +389,8 @@ kbd {
 /* Cables of VMs/containers that live inside another machine: grey and dashed */
 .link-g.nested .link-line { stroke: #6f7b8d !important; stroke-dasharray: 6 5; stroke-linecap: butt; stroke-width: 2; animation: none; }
 .link-g.hot .link-line { stroke-width: 3; }
-.link-g.selected .link-line { stroke: var(--accent) !important; stroke-width: 3; }
-.link-g.nested.selected .link-line { stroke: var(--accent) !important; }
+.link-g.selected .link-line { stroke: #dce8ff !important; stroke-width: 3; filter: drop-shadow(0 0 5px rgba(170, 200, 255, 0.9)); }
+.link-g.nested.selected .link-line { stroke: #dce8ff !important; }
 .link-line.drawing { stroke: var(--accent); stroke-dasharray: 5 5; opacity: 0.85; }
 .link-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
 
@@ -400,8 +400,6 @@ kbd {
 .link-tag { pointer-events: none; font-family: var(--font-mono); paint-order: stroke fill; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; transition: opacity 0.12s; }
 .link-tag.iface-tag { font-size: 9.5px; font-weight: 500; fill: var(--text-faint); }
 .link-tag.ip-tag { font-size: 10px; font-weight: 500; fill: var(--text-dim); }
-.link-g.dense .link-tag { opacity: 0; }
-.link-g.dense:hover .link-tag, .link-g.selected .link-tag { opacity: 1; }
 .link-caption { font-size: 10.5px; fill: var(--text-dim); pointer-events: none; }
 .link-caption-bg { fill: var(--bg); opacity: 0.92; pointer-events: none; }
 
@@ -450,7 +448,7 @@ kbd {
 .group-btn { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 5px; background: transparent; color: var(--text-dim); }
 .group-btn:hover { background: var(--surface-hover); color: var(--text); }
 .group-card { border-style: dashed; border-color: var(--gc); }
-.group-card.selected { border-style: solid; }
+.group-card.selected { border-style: solid; box-shadow: 0 0 0 1px rgba(210, 225, 255, 0.16), 0 0 22px 3px rgba(170, 200, 255, 0.28), var(--shadow-md); filter: brightness(1.14); }
 .gc-icons { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .gc-icon { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--surface-hover); color: var(--text-dim); }
 .gc-more { font-size: 10.5px; color: var(--text-faint); align-self: center; }
@@ -472,7 +470,8 @@ kbd {
 }
 .node:hover { border-color: var(--card-edge-hover); box-shadow: var(--shadow-md); }
 .node:active { cursor: grabbing; }
-.node.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-md); }
+/* Selection = a soft light glow (no coloured outline, which would read as a VPN ring) */
+.node.selected { box-shadow: 0 0 0 1px rgba(210, 225, 255, 0.16), 0 0 22px 3px rgba(170, 200, 255, 0.28), var(--shadow-md); filter: brightness(1.14); }
 .node.connect-target, .node-child.connect-target { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .node.drop-target, .node-child.drop-target { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); background: var(--surface-hover); }
 .node.dim, .node-child.dim { opacity: 0.28; }
@@ -536,7 +535,8 @@ kbd {
 /* ISP node: no card, just the word "ISP" (or a custom logo image) */
 .node-isp { min-width: 0; max-width: 180px; background: none; border: none; box-shadow: none; padding: 4px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; }
 .node-isp:hover { border-color: transparent; box-shadow: none; }
-.node-isp.selected, .node-isp.connect-target { box-shadow: 0 0 0 2px var(--accent-soft), 0 0 0 1px var(--accent); }
+.node-isp.connect-target { box-shadow: 0 0 0 2px var(--accent-soft), 0 0 0 1px var(--accent); }
+.node-isp.selected { filter: drop-shadow(0 0 9px rgba(170, 200, 255, 0.75)) brightness(1.2); }
 .node-isp.has-vpn, .node-isp.has-vpn:hover, .node-isp.has-vpn.selected { border: 2px solid transparent; background: var(--vpn-ring) border-box; }
 .node-isp-label { font-size: 22px; font-weight: 800; letter-spacing: 0.6px; color: var(--text-dim); text-shadow: 0 0 6px var(--bg), 0 0 6px var(--bg); }
 .node-isp-image { display: block; max-width: 140px; max-height: 70px; object-fit: contain; pointer-events: none; }
@@ -546,7 +546,7 @@ kbd {
 .node-child { position: relative; background: var(--card-bg); border: 1px solid var(--card-edge); border-radius: var(--radius-sm); padding: 7px 8px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s, opacity 0.2s; }
 .node-child.has-vpn-ips { padding-bottom: 26px; }
 .node-child:hover { border-color: var(--card-edge-hover); box-shadow: var(--shadow-sm); }
-.node-child.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.node-child.selected { box-shadow: 0 0 0 1px rgba(210, 225, 255, 0.2), 0 0 16px 2px rgba(170, 200, 255, 0.35); filter: brightness(1.2); }
 .node-child.has-vpn, .node-child.has-vpn:hover, .node-child.has-vpn.selected, .node-child.has-vpn.connect-target {
   border: 2px solid transparent;
   border-color: transparent !important;

@@ -93,7 +93,7 @@
       if (n.tags.length) facts.push('Etiquetas: ' + n.tags.join(', '));
       n.fields.filter((f) => f.k || f.v).forEach((f) => facts.push(f.k + ': ' + f.v));
       if (facts.length) out += facts.map((f) => '- ' + f).join('\n') + '\n\n';
-      out += mdTable(['Interfaz', 'Tipo', 'IP', 'Red / overlay', 'VLAN', 'MAC'], n.interfaces.filter((i) => i.name || i.ip || i.mode === 'dhcp' || i.mac).map((i) => {
+      out += mdTable(['Interfaz', 'Tipo', 'IP', 'Red / overlay', 'VLAN', 'MAC'], (Model.typeMeta(n.type).noIface ? [] : n.interfaces).filter((i) => i.name || i.ip || i.mode === 'dhcp' || i.mac).map((i) => {
         const net = Model.networkOf(state, i);
         const ov = state.overlays.find((o) => o.id === i.overlayId);
         return [i.name, (IFACE_KINDS[i.kind] || {}).label, i.ip || (i.mode === 'dhcp' ? 'DHCP' : ''), net ? net.name : (ov ? ov.name : ''), i.vlan, i.mac];
@@ -234,9 +234,9 @@
         out.push('<text x="' + g.mid.x + '" y="' + (g.mid.y + 4) + '" text-anchor="middle" fill="#96a2b3" font-size="10.5" ' + FONT + '>' + xml(cap) + '</text>');
       }
       [[g.ea, g.pA, g.dA], [g.eb, g.pB, g.dB]].forEach(([e, p, d]) => {
-        if (!e.iface) return;
+        if (!e.iface || Model.typeMeta(e.node.type).noIface) return;
         const ipText = Model.addrText(e.iface);
-        const name = e.node.type === 'isp' ? '' : e.iface.name;
+        const name = e.iface.name;
         const put = (text, x, y, anchor, fill) => out.push('<text x="' + x + '" y="' + (y + 3.5) + '" text-anchor="' + anchor + '" fill="' + fill + '" font-size="9.5" font-family="ui-monospace, Menlo, monospace" stroke="#0a0d12" stroke-width="3" paint-order="stroke">' + xml(text) + '</text>');
         if (d.x !== 0) {
           const a = d.x > 0 ? 'start' : 'end';

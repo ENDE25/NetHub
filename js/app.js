@@ -128,9 +128,21 @@
         onClick: () => { s.view.linkStyle = st.id; Store.touchView(); topology.updateLinks(); refreshChrome(); }
       }))), { alignRight: true });
     } else if (kind === 'layout') {
-      const moved = topology.autoLayout();
-      UI.toast(moved ? 'Mapa reordenado (' + moved + ' nodos movidos). Ctrl+Z lo deshace.' : 'No hay nada que reordenar.', moved ? 'success' : 'info', moved ? { action: { label: 'Deshacer', onClick: () => doUndo() } } : undefined);
+      confirmAutoLayout();
     }
+  }
+
+  // Auto layout moves every node, so it asks first (it can still be undone afterwards).
+  function confirmAutoLayout() {
+    UI.confirm({
+      title: 'Ordenar automáticamente',
+      message: 'Se recolocarán todos los nodos del mapa y se perderá la disposición actual. Podrás deshacerlo con Ctrl+Z.',
+      confirmLabel: 'Ordenar',
+      onConfirm: () => {
+        const moved = topology.autoLayout();
+        UI.toast(moved ? 'Mapa reordenado (' + moved + ' nodos movidos).' : 'No hay nada que reordenar.', moved ? 'success' : 'info', moved ? { action: { label: 'Deshacer', onClick: () => doUndo() } } : undefined);
+      }
+    });
   }
 
   function updateCounts() {
@@ -598,6 +610,11 @@
   }
 
   function ifaceSelect(node, role) {
+    // An ISP / Internet node has no interfaces to pick: the cable just ends on it.
+    if (Model.typeMeta(node.type).noIface) {
+      return '<select data-role="' + role + '-iface" hidden><option value="__auto__"></option></select><input type="text" data-role="' + role + '-new" hidden/>' +
+        '<span class="field-note">No necesita interfaz: el cable acaba directamente en el nodo.</span>';
+    }
     const used = occupiedIfaces(node);
     const hasFree = node.interfaces.some((i) => !used.has(i.id));
     const opts = node.interfaces.map((i) => '<option value="' + esc(i.id) + '"' + (used.has(i.id) ? ' disabled' : '') + '>' +
@@ -630,7 +647,7 @@
       const inp = body.querySelector('[data-role="' + role + '-new"]');
       const hasFree = node.interfaces.some((i) => !occupiedIfaces(node).has(i.id));
       const firstFree = node.interfaces.find((i) => !occupiedIfaces(node).has(i.id));
-      sel.value = hasFree ? firstFree.id : '__new__';
+      sel.value = Model.typeMeta(node.type).noIface ? '__auto__' : (hasFree ? firstFree.id : '__new__');
       inp.hidden = sel.value !== '__new__';
       sel.addEventListener('change', () => { inp.hidden = sel.value !== '__new__'; if (!inp.hidden) inp.focus(); autoMedium(); });
     });
@@ -653,7 +670,11 @@
       const endpoint = (role, node, side) => {
         const sel = body.querySelector('[data-role="' + role + '-iface"]');
         let iface;
-        if (sel.value === '__new__') {
+        if (sel.value === '__auto__') {
+          // hidden interface that only exists so the cable has an endpoint
+          iface = node.interfaces[0];
+          if (!iface) { iface = Factory.iface('eth0'); node.interfaces.push(iface); }
+        } else if (sel.value === '__new__') {
           const name = body.querySelector('[data-role="' + role + '-new"]').value.trim();
           iface = Factory.iface(name || NetHub.nextInterfaceName(node, medium === 'wifi' ? 'wlan' : 'eth'), medium === 'wifi' ? 'wifi' : 'ethernet');
           if (medium === 'wifi') iface.wifiRole = node.type === 'ap' ? 'ap' : 'client';
