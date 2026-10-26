@@ -304,7 +304,7 @@
     const s = getState();
     const ix = Model.index(s);
     let changed = false;
-    ix.ancestors(id).forEach((a) => { if (a.collapsed) { a.collapsed = false; changed = true; } });
+    ix.ancestors(id).forEach((a) => { if (a.collapsed || a.mini) { a.collapsed = false; a.mini = false; changed = true; } });
     const top = ix.top(id);
     const g = top && s.groups.find((x) => x.id === top.groupId);
     if (g && g.collapsed) { g.collapsed = false; changed = true; }

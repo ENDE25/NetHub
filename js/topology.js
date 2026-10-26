@@ -377,7 +377,7 @@
 
     el.className = (depth === 0 ? 'node' : 'node-child') + ' type-' + meta.group + ' device-' + n.type + cls +
       (meta.endpoint ? ' is-endpoint' : '') + (gateway ? ' is-gateway' : '');
-    if (gateway) el.title = 'Gateway: belongs to ' + nets.map((x) => x.name).join(' y ');
+    if (gateway) el.title = 'Gateway: belongs to ' + nets.map((x) => x.name).join(' and ');
     if (ring) el.style.setProperty('--vpn-ring', ring);
 
     const roleColor = n.role ? UI.colorForText(n.role) : null;
@@ -415,20 +415,22 @@
       foot = '<button type="button" class="panel-badge" data-act="menu" title="Open a panel">' + Icons.svg('externalLink', 11) + 'Panels (' + urls.length + ')' + Icons.svg('chevronDown', 10) + '</button>';
     }
 
-    const toggle = kids.length
-      ? '<button type="button" class="node-toggle" data-act="toggle" title="' + (n.collapsed ? 'Expandir' : 'Colapsar') + ' contenido">' + Icons.svg(n.collapsed ? 'chevronRight' : 'chevronDown', 13) + '</button>'
+    const mini = !!n.mini;
+    if (mini) el.className += ' is-mini';
+    const toggle = kids.length && !mini
+      ? '<button type="button" class="node-toggle" data-act="toggle" title="' + (n.collapsed ? 'Expand' : 'Collapse') + ' contents">' + Icons.svg(n.collapsed ? 'chevronRight' : 'chevronDown', 13) + '</button>'
       : '';
 
     el.innerHTML =
       '<div class="node-head">' +
-        '<span class="node-icon">' + Icons.svg(meta.icon, depth === 0 ? 18 : 15) + '</span>' +
+        '<span class="node-icon" data-act="mini" title="' + (mini ? 'Click to expand' : 'Click to minimize') + '">' + Icons.svg(meta.icon, depth === 0 ? 18 : 15) + '</span>' +
         '<div class="node-title"><span class="node-name">' + esc(n.name || meta.label) + '</span>' +
-        '<span class="node-type">' + esc(meta.label) + (n.os ? ' &middot; ' + esc(n.os) : '') + '</span></div>' + toggle +
-      '</div>' + ipHtml + (chips ? '<div class="node-chips">' + chips + '</div>' : '') + netHtml + svcHtml +
+        '<span class="node-type">' + esc(meta.label) + (n.os && !mini ? ' &middot; ' + esc(n.os) : '') + '</span></div>' + toggle +
+      '</div>' + (mini ? overlayHtml + dots : ipHtml + (chips ? '<div class="node-chips">' + chips + '</div>' : '') + netHtml + svcHtml +
       (kids.length ? (n.collapsed
         ? '<button type="button" class="node-collapsed" data-act="toggle">' + Icons.svg('chevronRight', 12) + kids.length + (kids.length === 1 ? ' item' : ' items') + '</button>'
         : '<div class="node-children"></div>') : '') +
-      (foot ? '<div class="node-foot">' + foot + '</div>' : '') + overlayHtml + dots;
+      (foot ? '<div class="node-foot">' + foot + '</div>' : '') + overlayHtml + dots);
 
     const holder = el.querySelector(':scope > .node-children');
     if (holder) kids.forEach((k) => holder.appendChild(this._buildNode(k, depth + 1)));
@@ -446,7 +448,7 @@
     const cols = n.layout === 'row' ? Math.max(1, kids.length) : n.layout === 'column' ? 1 : Math.min(4, Math.max(1, Math.ceil(Math.sqrt(kids.length))));
     el.className = (depth === 0 ? 'node' : 'node-child') + ' node-group';
     const toggle = kids.length
-      ? '<button type="button" class="node-toggle" data-act="toggle" title="' + (n.collapsed ? 'Expandir' : 'Colapsar') + ' contenido">' + Icons.svg(n.collapsed ? 'chevronRight' : 'chevronDown', 13) + '</button>'
+      ? '<button type="button" class="node-toggle" data-act="toggle" title="' + (n.collapsed ? 'Expand' : 'Collapse') + ' contents">' + Icons.svg(n.collapsed ? 'chevronRight' : 'chevronDown', 13) + '</button>'
       : '';
     el.innerHTML = '<div class="node-head"><span class="node-icon">' + Icons.svg('group', depth === 0 ? 18 : 15) + '</span>' +
       (n.name ? '<span class="node-name group-title">' + esc(n.name) + '</span>' : '<span class="group-title-spacer"></span>') + toggle + '</div>' +
@@ -958,6 +960,12 @@
         label: u.name, hint: u.url.replace(/^https?:\/\//, '').slice(0, 28), icon: 'externalLink',
         onClick: () => window.open(u.url, '_blank', 'noopener')
       }))));
+    } else if (kind === 'mini' && nodeEl) {
+      const n = this.ix.get(nodeEl.dataset.nodeId);
+      if (!n || n.type === 'isp') return;
+      n.mini = !n.mini;
+      this.commit('mini');
+      this.refreshNode(n.id);
     } else if (kind === 'toggle' && nodeEl) {
       const n = this.ix.get(nodeEl.dataset.nodeId);
       if (!n) return;

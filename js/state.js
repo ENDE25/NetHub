@@ -145,7 +145,7 @@
         parentId: null,
         x: Math.round(x || 0), y: Math.round(y || 0),
         os: '', model: '', role: '',
-        tags: [], groupId: '', collapsed: false, layout: 'grid',
+        tags: [], groupId: '', collapsed: false, mini: false, layout: 'grid',
         notes: '',
         fields: [],
         isp: '', ispImage: '',
