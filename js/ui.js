@@ -50,7 +50,10 @@
     const x = luminance(a), y = luminance(b);
     return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
   }
+  // the old default teal of the dark theme is shown as a stronger green
+  const LEGACY = { '#2ad9b8': '#22c55e' };
   function ink(hex, ratio) {
+    hex = LEGACY[String(hex).toLowerCase()] || hex;
     const c = rgb(hex);
     if (!c) return hex;
     ratio = ratio || 4.5;
@@ -65,6 +68,20 @@
     const res = '#' + out.map((v) => v.toString(16).padStart(2, '0')).join('');
     inkCache.set(key, res);
     return res;
+  }
+  // Label colours (roles, networks): the same hues as the traffic wheel of the reference UI, vivid and filled.
+  const WHEEL = ['#0a4ea8', '#2a7de1', '#45b8f0', '#35c46a', '#b8dc3a', '#f7d117', '#f5a623', '#f0443a', '#9140e3', '#5a67e0'];
+  function labelColor(text) {
+    const s = String(text || '');
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+    return WHEEL[hash % WHEEL.length];
+  }
+  // Text colour (white or near-black) with the best contrast on a filled background.
+  function onColor(hex) {
+    const c = rgb(hex);
+    if (!c) return '#ffffff';
+    return contrast(c, [255, 255, 255]) >= contrast(c, [17, 24, 39]) ? '#ffffff' : '#111827';
   }
   function getTheme() { return theme; }
   function applyTheme(t, persist) {
@@ -314,7 +331,7 @@
 
   global.NetHub.UI = {
     modal, confirm, toast, button, escapeHtml, closeModal, colorForText,
-    ink, getTheme, applyTheme, contrast,
+    ink, labelColor, onColor, WHEEL, getTheme, applyTheme, contrast,
     menu, showMenuAt, closeMenu, prompt, debounce, copyText, download, isTyping
   };
 

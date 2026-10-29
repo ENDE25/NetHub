@@ -31,7 +31,7 @@
     if (j.Self) hosts.push(j.Self);
     Object.keys(j.Peer || {}).forEach((k) => hosts.push(j.Peer[k]));
     if (!hosts.length) throw new Error('The JSON contains no Tailscale devices.');
-    const overlay = { name: 'Tailscale', cidr: '100.64.0.0/10', color: '#2ad9b8' };
+    const overlay = { name: 'Tailscale', cidr: '100.64.0.0/10', color: '#22c55e' };
     return {
       overlay,
       items: hosts.map((h) => {

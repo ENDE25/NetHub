@@ -329,7 +329,7 @@
       renderNetworks(container, ctx);
     });
     body.querySelector('[data-role="new-ov"]').addEventListener('click', () => {
-      const ov = Factory.overlay('New overlay', '#2ad9b8');
+      const ov = Factory.overlay('New overlay', '#22c55e');
       state.overlays.push(ov);
       ui.openOverlay = ov.id;
       ctx.commit('ov-add');

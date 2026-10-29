@@ -380,8 +380,8 @@
     if (gateway) el.title = 'Gateway: belongs to ' + nets.map((x) => x.name).join(' and ');
     if (ring) el.style.setProperty('--vpn-ring', ring);
 
-    const roleColor = n.role ? UI.colorForText(n.role) : null;
-    const chips = (n.role ? '<span class="chip role-chip" style="color:' + roleColor + ';border-color:' + roleColor + ';background:' + roleColor + '1a">' + esc(n.role) + '</span>' : '') +
+    const roleColor = n.role ? UI.labelColor(n.role) : null;
+    const chips = (n.role ? '<span class="chip role-chip" style="color:' + UI.onColor(roleColor) + ';border-color:' + roleColor + ';background:' + roleColor + '">' + esc(n.role) + '</span>' : '') +
       n.tags.slice(0, 3).map((t) => '<span class="chip tag-chip">' + esc(t) + '</span>').join('') +
       (n.tags.length > 3 ? '<span class="chip tag-chip">+' + (n.tags.length - 3) + '</span>' : '');
 
@@ -391,7 +391,7 @@
       : '';
 
     const netHtml = layer === 'logical' && nets.length
-      ? '<div class="node-nets">' + nets.map((x) => '<span class="net-badge" style="--c:' + UI.ink(x.color, 5.5) + '">' + esc(x.name) + '</span>').join('') + '</div>'
+      ? '<div class="node-nets">' + nets.map((x) => '<span class="net-badge" style="--c:' + x.color + ';--on:' + UI.onColor(x.color) + '">' + esc(x.name) + '</span>').join('') + '</div>'
       : '';
 
     let svcHtml = '';

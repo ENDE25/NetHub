@@ -646,7 +646,7 @@
       '<div class="hint-line">An overlay (Tailscale, WireGuard...) is a virtual network. Joining one creates a tunnel interface on this node.</div>' +
       '<div class="ov-list" data-role="list"></div>' +
       section('New overlay') +
-      '<div class="add-vpn-row"><input type="text" data-role="new-name" placeholder="Name (Tailscale, WireGuard...)"/><input type="color" data-role="new-color" value="#2ad9b8" title="Color"/>' +
+      '<div class="add-vpn-row"><input type="text" data-role="new-name" placeholder="Name (Tailscale, WireGuard...)"/><input type="color" data-role="new-color" value="#22c55e" title="Color"/>' +
       '<button type="button" class="btn btn-ghost" data-role="add">' + Icons.svg('plus', 14) + '<span>Crear</span></button></div>';
     const list = wrap.querySelector('[data-role="list"]');
     state.overlays.forEach((ov) => {

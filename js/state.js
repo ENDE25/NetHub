@@ -70,7 +70,7 @@
   const MEDIA = {
     ethernet: { label: 'Ethernet (copper)', color: '#5b8cff' },
     fiber:    { label: 'Fiber',            color: '#c084fc' },
-    wifi:     { label: 'Wi-Fi',            color: '#2ad9b8' },
+    wifi:     { label: 'Wi-Fi',            color: '#22c55e' },
     virtual:  { label: 'Virtual',          color: '#7a8699' },
     tunnel:   { label: 'Tunnel / VPN',      color: '#f0b642' },
     usb:      { label: 'USB / serial',      color: '#94a3b8' }
@@ -91,7 +91,7 @@
     { id: 'curved',     label: 'Curved',         icon: 'curve' }
   ];
 
-  const PALETTE = ['#5b8cff', '#2ad9b8', '#f0b642', '#c084fc', '#f2685f', '#4ade80', '#38bdf8', '#fb923c', '#e879f9', '#a3e635'];
+  const PALETTE = ['#2a7de1', '#35c46a', '#f7d117', '#9140e3', '#f0443a', '#45b8f0', '#f5a623', '#5a67e0', '#0a4ea8', '#b8dc3a'];
 
   // Common services, to add in one click. scheme makes the URL; path is appended to it.
   const SERVICE_PRESETS = [
@@ -171,7 +171,7 @@
       return { id: uuid(), name: name || 'New network', cidr: cidr || '', vlan: '', gateway: '', dhcpStart: '', dhcpEnd: '', color: color || PALETTE[0], notes: '', inferred: false };
     },
     overlay(name, color) {
-      return { id: uuid(), name: name || 'VPN', color: color || '#2ad9b8', cidr: '', notes: '' };
+      return { id: uuid(), name: name || 'VPN', color: color || '#22c55e', cidr: '', notes: '' };
     },
     group(name, color) {
       return { id: uuid(), name: name || 'Group', color: color || '#5b8cff', collapsed: false, x: 0, y: 0 };

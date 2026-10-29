@@ -71,8 +71,9 @@
 /* ------------------------------ Light theme ------------------------------ */
 /* Every text colour keeps at least 4.5:1 against its background (white cards or the page grey). */
 :root[data-theme="light"] {
-  --bg: #f3f5f9;
-  --bg-soft: #f7f8fb;
+  --bg: #ffffff;
+  --bg-soft: #f6f7fa;
+  --chrome: #eef0f5;
   --bg-elevated: #ffffff;
   --surface: #ffffff;
   --surface-hover: #edf0f6;
@@ -108,10 +109,10 @@
   --sel-ring: rgba(8, 87, 204, 0.55);
   --sel-filter: none;
   --sel-filter-child: none;
-  --endpoint-bg: linear-gradient(180deg, #eef4ff, #e4edff);
-  --endpoint-edge: #b6c9f0;
+  --endpoint-bg: linear-gradient(#e6efff, #e6efff);
+  --endpoint-edge: #a9c2f2;
   --endpoint-edge-hover: #8aa8e6;
-  --gateway-bg: linear-gradient(180deg, #fff0f1, #fde6e8);
+  --gateway-bg: linear-gradient(#fde6e8, #fde6e8);
   --gateway-edge: #f0b5bb;
   --gateway-edge-hover: #e58a94;
   --gateway-flat: #fde6e8;
@@ -125,6 +126,12 @@
   color-scheme: light;
 }
 :root[data-theme="light"] .node-isp-label { text-shadow: none; }
+/* menus and side bars are grey, the canvas and the cards are white */
+:root[data-theme="light"] .topbar { background: var(--chrome); }
+:root[data-theme="light"] .library,
+:root[data-theme="light"] .statusbar,
+:root[data-theme="light"] .view-toolbar,
+:root[data-theme="light"] .side-panel-header { background: var(--chrome); }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -602,7 +609,7 @@ kbd {
 .role-chip { font-weight: 700; }
 .tag-chip { font-family: var(--font); font-size: 10px; background: transparent; }
 .node-nets { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
-.net-badge { font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 6px; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); }
+.net-badge { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px; color: var(--on, #fff); background: var(--c); border: 1px solid var(--c); }
 
 .node-services { display: flex; flex-direction: column; gap: 3px; margin-top: 9px; }
 .svc-row { display: flex; align-items: center; gap: 7px; padding: 4px 7px; border-radius: 6px; background: var(--bg-soft); border: 1px solid var(--border); font-size: 11.5px; color: var(--text-dim); }

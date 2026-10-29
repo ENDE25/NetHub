@@ -57,7 +57,7 @@
     state.overlays = arr(raw.vpns).filter((v) => v && typeof v.id === 'string').map((v) => ({
       id: v.id,
       name: str(v.name).trim() || 'VPN',
-      color: color(v.color, '#2ad9b8'),
+      color: color(v.color, '#22c55e'),
       cidr: /tailscale/i.test(str(v.name)) ? '100.64.0.0/10' : '',
       notes: ''
     }));
@@ -271,7 +271,7 @@
     state.overlays = arr(raw.overlays).filter((o) => isObj(o) && typeof o.id === 'string').map((o) => ({
       id: o.id,
       name: str(o.name).trim() || 'VPN',
-      color: color(o.color, '#2ad9b8'),
+      color: color(o.color, '#22c55e'),
       cidr: str(o.cidr).trim(),
       notes: str(o.notes)
     }));
