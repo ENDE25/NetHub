@@ -237,7 +237,7 @@
       const a = Ipam.analyze(state, net);
       const open = ui.openNet === net.id;
       const card = el('div', 'net-card' + (open ? ' open' : ''));
-      card.style.setProperty('--c', net.color);
+      card.style.setProperty('--c', UI.ink(net.color, 3));
       card.innerHTML =
         '<button type="button" class="net-card-head"><span class="net-color"></span>' +
         '<span class="net-name">' + esc(net.name) + (net.inferred ? '<span class="badge warn">inferred</span>' : '') + '</span>' +
@@ -283,7 +283,7 @@
       const members = Ipam.overlayMembers(state, ov);
       const open = ui.openOverlay === ov.id;
       const card = el('div', 'net-card' + (open ? ' open' : ''));
-      card.style.setProperty('--c', ov.color);
+      card.style.setProperty('--c', UI.ink(ov.color, 3));
       card.innerHTML = '<button type="button" class="net-card-head"><span class="net-color"></span><span class="net-name">' + esc(ov.name) + '</span>' +
         '<span class="net-meta mono">' + esc(ov.cidr || '') + '</span><span class="net-use"><span class="net-use-text">' + members.length + ' miembros</span></span>' + Icons.svg(open ? 'chevronUp' : 'chevronDown', 14) + '</button>';
       card.querySelector('.net-card-head').addEventListener('click', () => { ui.openOverlay = open ? null : ov.id; renderNetworks(container, ctx); });

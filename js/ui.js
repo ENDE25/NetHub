@@ -24,8 +24,61 @@
     const s = String(text || '');
     let hash = 0;
     for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
-    return hslToHex(hash % 360, 62, 58);
+    return ink(hslToHex(hash % 360, 62, 58), 5.5);
   }
+
+
+  // ---------- Theme (dark / light) ----------
+  // Colours the user picks (networks, overlays, cable media) are stored once; ink() adapts them to the current
+  // background so they stay legible: darkened on the light theme, lightened on the dark one.
+  const THEME_KEY = 'nethub-theme';
+  const SURFACES = { light: '#ffffff', dark: '#171e28' };
+  let theme = 'dark';
+  const inkCache = new Map();
+
+  function rgb(hex) {
+    const h = String(hex || '').replace('#', '');
+    const f = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+    if (!/^[0-9a-f]{6}$/i.test(f)) return null;
+    return [0, 2, 4].map((i) => parseInt(f.slice(i, i + 2), 16));
+  }
+  function luminance(c) {
+    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+  }
+  function contrast(a, b) {
+    const x = luminance(a), y = luminance(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  function ink(hex, ratio) {
+    const c = rgb(hex);
+    if (!c) return hex;
+    ratio = ratio || 4.5;
+    const key = theme + '|' + hex + '|' + ratio;
+    if (inkCache.has(key)) return inkCache.get(key);
+    const bg = rgb(SURFACES[theme]);
+    const target = theme === 'light' ? [0, 0, 0] : [255, 255, 255];
+    let out = c;
+    for (let t = 0; t <= 1.0001 && contrast(out, bg) < ratio; t += 0.04) {
+      out = c.map((v, i) => Math.round(v + (target[i] - v) * t));
+    }
+    const res = '#' + out.map((v) => v.toString(16).padStart(2, '0')).join('');
+    inkCache.set(key, res);
+    return res;
+  }
+  function getTheme() { return theme; }
+  function applyTheme(t, persist) {
+    theme = t === 'light' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = theme;
+    if (persist) { try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* ignore */ } }
+  }
+  function initTheme() {
+    let t = null;
+    try { t = localStorage.getItem(THEME_KEY); } catch (e) { /* ignore */ }
+    if (t !== 'light' && t !== 'dark') t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    applyTheme(t, false);
+  }
+  initTheme();
 
   let toastRoot;
   function ensureToastRoot() {
@@ -261,6 +314,7 @@
 
   global.NetHub.UI = {
     modal, confirm, toast, button, escapeHtml, closeModal, colorForText,
+    ink, getTheme, applyTheme, contrast,
     menu, showMenuAt, closeMenu, prompt, debounce, copyText, download, isTyping
   };
 

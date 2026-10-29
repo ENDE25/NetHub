@@ -73,6 +73,7 @@
     $('btn-undo').innerHTML = Icons.svg('undo', 16);
     $('btn-redo').innerHTML = Icons.svg('redo', 16);
     $('btn-menu').innerHTML = Icons.svg('menu', 18);
+    syncThemeButton();
     $('btn-search').innerHTML = Icons.svg('search', 15) + '<span>Search</span><kbd>Ctrl K</kbd>';
     $('btn-validate').innerHTML = Icons.svg('checkCircle', 16) + '<span class="validate-text">Review</span><span class="validate-count" hidden></span>';
     document.querySelector('.empty-hint-icon').innerHTML = Icons.svg('network', 30);
@@ -104,6 +105,7 @@
     $('btn-undo').addEventListener('click', () => doUndo());
     $('btn-redo').addEventListener('click', () => doRedo());
     $('btn-validate').addEventListener('click', openValidation);
+    $('btn-theme').addEventListener('click', () => toggleTheme());
     $('btn-menu').addEventListener('click', (e) => UI.menu(e.currentTarget, mainMenuItems(), { alignRight: true }));
     $('map-switch').addEventListener('click', (e) => UI.menu(e.currentTarget, mapMenuItems()));
     applyLibraryVisibility();
@@ -222,6 +224,19 @@
     } else {
       renderCurrentView();
     }
+  }
+
+  function syncThemeButton() {
+    const light = UI.getTheme() === 'light';
+    $('btn-theme').innerHTML = Icons.svg(light ? 'moon' : 'sun', 17);
+    $('btn-theme').title = light ? 'Switch to the dark theme' : 'Switch to the light theme';
+  }
+
+  // Colours that depend on the theme are computed while rendering, so everything is redrawn after switching.
+  function toggleTheme() {
+    UI.applyTheme(UI.getTheme() === 'light' ? 'dark' : 'light', true);
+    syncThemeButton();
+    fullRefresh();
   }
 
   function setLayer(layer) {
@@ -394,7 +409,7 @@
     if (layer === 'logical' || layer === 'overlay') {
       const defs = layer === 'logical' ? s.networks : s.overlays;
       html = '<div class="lg-title">' + (layer === 'logical' ? 'Networks' : 'Overlays') + '<span class="lg-hint">click to highlight</span></div>' +
-        (defs.length ? defs.map((d) => '<div class="lg-row' + (topology && topology.focus && topology.focus.id === d.id ? ' active' : '') + '" data-id="' + esc(d.id) + '" style="--c:' + d.color + '">' +
+        (defs.length ? defs.map((d) => '<div class="lg-row' + (topology && topology.focus && topology.focus.id === d.id ? ' active' : '') + '" data-id="' + esc(d.id) + '" style="--c:' + UI.ink(d.color, 3) + '">' +
           '<button type="button" class="lg-main"><span class="lg-dot"></span><span class="lg-name">' + esc(d.name) + '</span><span class="lg-meta">' + esc(d.cidr && d.cidr !== d.name ? d.cidr : '') + '</span></button>' +
           '<button type="button" class="icon-btn lg-edit" title="Edit">' + Icons.svg('edit', 12) + '</button></div>').join('')
           : '<div class="lg-empty">' + (layer === 'logical' ? 'No networks yet. Create them in the Networks view.' : 'No overlays yet. Assign them from a node.') + '</div>');
@@ -990,6 +1005,7 @@
   function openPalette() {
     const cmds = [
       { label: 'Review the network', icon: 'checkCircle', run: openValidation, keywords: 'validate check errors' },
+      { label: 'Toggle light / dark theme', icon: 'sun', run: () => toggleTheme(), keywords: 'theme dark light mode appearance' },
       { label: 'Auto-arrange the map', icon: 'wand', run: () => { setView('map'); onZoomControl('layout'); }, keywords: 'layout organize' },
       { label: 'Separate overlapping nodes', icon: 'wand', run: () => { setView('map'); const n = topology.separateOverlaps(); UI.toast(n ? n + ' nodes separated.' : 'No overlapping nodes.', 'info'); }, keywords: 'overlap collisions' },
       { label: 'Go to: Map', icon: 'map', run: () => setView('map') }, { label: 'Go to: Inventory', icon: 'table', run: () => setView('inventory') },

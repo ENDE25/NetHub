@@ -6,7 +6,8 @@
 <meta name="referrer" content="no-referrer" />
 <title>NetHub</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-<link rel="stylesheet" href="css/style.css?v=20261026a" />
+<script>try{var t=localStorage.getItem("nethub-theme");if(t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.dataset.theme=t;}catch(e){}</script>
+  <link rel="stylesheet" href="css/style.css?v=20261029c" />
 </head>
 <body>
 
@@ -23,6 +24,7 @@
       <button class="icon-btn" id="btn-redo" title="Redo (Ctrl+Shift+Z)"></button>
     </div>
     <button class="btn btn-ghost btn-validate" id="btn-validate" title="Check the network"></button>
+    <button class="icon-btn" id="btn-theme" title="Switch between light and dark theme"></button>
     <button class="icon-btn" id="btn-menu" title="File, export and import"></button>
   </header>
 
@@ -63,23 +65,23 @@
 
 <input type="file" id="file-import" accept=".json,.xml,.csv,application/json,text/xml,text/csv" hidden />
 
-<script src="js/icons.js?v=20261026a"></script>
-<script src="js/netutil.js?v=20261026a"></script>
-<script src="js/ui.js?v=20261026a"></script>
-<script src="js/isp.js?v=20261026a"></script>
-<script src="js/state.js?v=20261026a"></script>
-<script src="js/migrate.js?v=20261026a"></script>
-<script src="js/storage.js?v=20261026a"></script>
-<script src="js/store.js?v=20261026a"></script>
-<script src="js/ipam.js?v=20261026a"></script>
-<script src="js/validate.js?v=20261026a"></script>
-<script src="js/layout.js?v=20261026a"></script>
-<script src="js/topology.js?v=20261026a"></script>
-<script src="js/panel.js?v=20261026a"></script>
-<script src="js/views.js?v=20261026a"></script>
-<script src="js/exporters.js?v=20261026a"></script>
-<script src="js/importers.js?v=20261026a"></script>
-<script src="js/search.js?v=20261026a"></script>
-<script src="js/app.js?v=20261026a"></script>
+<script src="js/icons.js?v=20261029c"></script>
+<script src="js/netutil.js?v=20261029c"></script>
+<script src="js/ui.js?v=20261029c"></script>
+<script src="js/isp.js?v=20261029c"></script>
+<script src="js/state.js?v=20261029c"></script>
+<script src="js/migrate.js?v=20261029c"></script>
+<script src="js/storage.js?v=20261029c"></script>
+<script src="js/store.js?v=20261029c"></script>
+<script src="js/ipam.js?v=20261029c"></script>
+<script src="js/validate.js?v=20261029c"></script>
+<script src="js/layout.js?v=20261029c"></script>
+<script src="js/topology.js?v=20261029c"></script>
+<script src="js/panel.js?v=20261029c"></script>
+<script src="js/views.js?v=20261029c"></script>
+<script src="js/exporters.js?v=20261029c"></script>
+<script src="js/importers.js?v=20261029c"></script>
+<script src="js/search.js?v=20261029c"></script>
+<script src="js/app.js?v=20261029c"></script>
 </body>
 </html>

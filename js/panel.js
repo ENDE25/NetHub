@@ -40,7 +40,7 @@
     const a = Ipam.analyze(state, net);
     if (!a.valid) return '<div class="field-note">Enter a valid CIDR (for example 192.168.1.0/24) to see address usage.</div>';
     const next = a.nextFree();
-    return '<div class="ipam-bar"><div class="ipam-fill" style="width:' + a.pct + '%;background:' + net.color + '"></div></div>' +
+    return '<div class="ipam-bar"><div class="ipam-fill" style="width:' + a.pct + '%;background:' + UI.ink(net.color, 3) + '"></div></div>' +
       '<div class="ipam-stats"><span><b>' + a.usedCount + '</b> in use</span>' + (a.dhcp ? '<span><b>' + a.reserved + '</b> DHCP reserved</span>' : '') +
       '<span><b>' + a.free + '</b> free of ' + a.usable + '</span></div>' +
       (next ? '<div class="field-note">Next free IP: <code>' + esc(next) + '</code></div>' : '<div class="field-note">No free addresses left.</div>') +
@@ -246,7 +246,7 @@
     const isp = n.type === 'isp' ? ISP_PROVIDERS.find((p) => p.id === n.isp) : null;
     let icon = { html: Icons.svg(meta.icon, 18) };
     if (n.type === 'isp' && n.ispImage) icon = { html: '<img class="sp-icon-image" src="' + esc(n.ispImage) + '" alt="Logo"/>' };
-    else if (isp) icon = { html: '<span class="isp-monogram">' + esc(isp.initials) + '</span>', bg: isp.color + '26', color: isp.color };
+    else if (isp) icon = { html: '<span class="isp-monogram">' + esc(isp.initials) + '</span>', bg: isp.color + '26', color: UI.ink(isp.color, 5.5) };
 
     const urls = Model.nodeUrls(n);
     const actions = [{ icon: 'map', title: 'Show on map', onClick: () => this.onShowInMap(n.id) }];
@@ -325,7 +325,7 @@
       '<div class="field-row">' + field('Type', selectHtml('type', typeOpts, n.type)) +
         field('Hosted on', selectHtml('parentId', hostOpts, n.parentId || '')) + '</div>' +
       '<div class="field-row">' + field('Operating system', textInput('os', n.os, 'OpenWrt, Debian 12...')) +
-        field('Modelo', textInput('model', n.model, 'UniFi Dream Router...')) + '</div>' +
+        field('Model', textInput('model', n.model, 'UniFi Dream Router...')) + '</div>' +
       ispProvider +
       field('Role', textInput('role', n.role, 'Gateway, DNS, NextCloud...'), 'Colour tag on the node') +
       field('Tags', '<input type="text" data-role="tags" value="' + esc(n.tags.join(', ')) + '" placeholder="production, wifi, lab" autocomplete="off"/>', 'Comma separated') +
@@ -653,7 +653,7 @@
       const t = Model.tunnelIface(n, ov.id);
       const row = document.createElement('div');
       row.className = 'ov-card' + (t ? ' on' : '');
-      row.style.setProperty('--vpn-color', ov.color);
+      row.style.setProperty('--vpn-color', UI.ink(ov.color, 3));
       row.innerHTML =
         '<label class="ov-head"><input type="checkbox"' + (t ? ' checked' : '') + '/><span class="vpn-swatch"></span><span class="vpn-name">' + esc(ov.name) + '</span>' +
         '<button type="button" class="icon-btn" data-act="open" title="Edit overlay">' + Icons.svg('edit', 13) + '</button></label>' +
@@ -756,7 +756,7 @@
     const g = state.groups.find((x) => x.id === this.target.id);
     if (!g) return false;
     const members = state.nodes.filter((n) => n.groupId === g.id);
-    this._header({ html: Icons.svg('group', 18), color: g.color, bg: g.color + '26' }, g.name || 'Group', 'Group · ' + members.length + (members.length === 1 ? ' node' : ' nodes'), {});
+    this._header({ html: Icons.svg('group', 18), color: UI.ink(g.color, 5.5), bg: g.color + '26' }, g.name || 'Group', 'Group · ' + members.length + (members.length === 1 ? ' node' : ' nodes'), {});
     this._setTabs(null);
     const wrap = document.createElement('div');
     wrap.className = 'details-pane';
@@ -793,7 +793,7 @@
     const self = this;
     const net = state.networks.find((x) => x.id === this.target.id);
     if (!net) return false;
-    this._header({ html: Icons.svg('subnet', 18), color: net.color, bg: net.color + '26' }, net.name, 'Network' + (net.cidr ? ' · ' + net.cidr : ''), {});
+    this._header({ html: Icons.svg('subnet', 18), color: UI.ink(net.color, 5.5), bg: net.color + '26' }, net.name, 'Network' + (net.cidr ? ' · ' + net.cidr : ''), {});
     this._setTabs(null);
     this.body.innerHTML = '';
     this.body.appendChild(networkForm(state, net, {
@@ -820,7 +820,7 @@
     const self = this;
     const ov = state.overlays.find((x) => x.id === this.target.id);
     if (!ov) return false;
-    this._header({ html: Icons.svg('cloud', 18), color: ov.color, bg: ov.color + '26' }, ov.name, 'Overlay' + (ov.cidr ? ' · ' + ov.cidr : ''), {});
+    this._header({ html: Icons.svg('cloud', 18), color: UI.ink(ov.color, 5.5), bg: ov.color + '26' }, ov.name, 'Overlay' + (ov.cidr ? ' · ' + ov.cidr : ''), {});
     this._setTabs(null);
     this.body.innerHTML = '';
     this.body.appendChild(overlayForm(state, ov, {

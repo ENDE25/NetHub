@@ -24,7 +24,7 @@
   }
 
   function ringStyle(overlays) {
-    const colors = overlays.map((o) => o.color);
+    const colors = overlays.map((o) => UI.ink(o.color, 3));
     if (!colors.length) return null;
     if (colors.length === 1) return colors[0];
     const segment = 360 / colors.length;
@@ -356,7 +356,7 @@
 
     const overlayIps = (n.interfaces || []).filter((i) => i.kind === 'tunnel' && i.overlayId && (i.ip || i.mode === 'dhcp')).map((i) => {
       const o = state.overlays.find((x) => x.id === i.overlayId);
-      return o ? '<span class="vpn-ip" style="color:' + o.color + '" title="' + esc(o.name) + '">' + esc(i.ip || 'DHCP') + '</span>' : '';
+      return o ? '<span class="vpn-ip" style="color:' + UI.ink(o.color, 5.5) + '" title="' + esc(o.name) + '">' + esc(i.ip || 'DHCP') + '</span>' : '';
     }).join('');
     const overlayHtml = overlayIps ? '<div class="vpn-ip-labels">' + overlayIps + '</div>' : '';
     const dots = SIDES.map((s) => '<button type="button" class="anchor-dot anchor-dot--' + s + '" data-side="' + s + '" title="Drag to create a connection" tabindex="-1"></button>').join('');
@@ -391,7 +391,7 @@
       : '';
 
     const netHtml = layer === 'logical' && nets.length
-      ? '<div class="node-nets">' + nets.map((x) => '<span class="net-badge" style="--c:' + x.color + '">' + esc(x.name) + '</span>').join('') + '</div>'
+      ? '<div class="node-nets">' + nets.map((x) => '<span class="net-badge" style="--c:' + UI.ink(x.color, 5.5) + '">' + esc(x.name) + '</span>').join('') + '</div>'
       : '';
 
     let svcHtml = '';
@@ -467,7 +467,7 @@
     el.dataset.groupCard = g.id;
     el.style.left = g.x + 'px';
     el.style.top = g.y + 'px';
-    el.style.setProperty('--gc', g.color);
+    el.style.setProperty('--gc', UI.ink(g.color, 3));
     const icons = members.slice(0, 8).map((m) => '<span class="gc-icon" title="' + esc(m.name) + '">' + Icons.svg(Model.typeMeta(m.type).icon, 12) + '</span>').join('');
     el.innerHTML = '<div class="node-head"><span class="node-icon">' + Icons.svg('group', 18) + '</span>' +
       '<div class="node-title"><span class="node-name">' + esc(g.name) + '</span><span class="node-type">Group &middot; ' + members.length + (members.length === 1 ? ' node' : ' nodes') + '</span></div>' +
@@ -1040,7 +1040,7 @@
       const box = document.createElement('div');
       box.className = 'group-box' + (this.selGroup === g.id ? ' selected' : '');
       box.dataset.groupId = g.id;
-      box.style.cssText = 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;--gc:' + g.color;
+      box.style.cssText = 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;--gc:' + UI.ink(g.color, 3);
       box.innerHTML = '<div class="group-head" data-group-id="' + esc(g.id) + '">' +
         '<span class="group-dot"></span><span class="group-name">' + esc(g.name) + '</span>' +
         '<span class="group-count">' + members.length + '</span>' +
@@ -1073,10 +1073,10 @@
       const focused = this.focus && this.focus.id === def.id;
       const faded = this.focus && !focused;
       const hull = convexHull(roundPad(pts, 20));
-      const poly = svgEl('polygon', { points: hull.map((p) => p.x + ',' + p.y).join(' '), style: '--c:' + def.color }, 'segment' + (layer === 'overlay' ? ' overlay' : '') + (faded ? ' faded' : '') + (focused ? ' focused' : ''));
+      const poly = svgEl('polygon', { points: hull.map((p) => p.x + ',' + p.y).join(' '), style: '--c:' + UI.ink(def.color, 4.5) }, 'segment' + (layer === 'overlay' ? ' overlay' : '') + (faded ? ' faded' : '') + (focused ? ' focused' : ''));
       el.appendChild(poly);
       const minY = Math.min.apply(null, hull.map((p) => p.y)), minX = Math.min.apply(null, hull.map((p) => p.x));
-      const label = svgEl('text', { x: minX + 6, y: minY - 8, style: '--c:' + def.color }, 'segment-label' + (faded ? ' faded' : ''));
+      const label = svgEl('text', { x: minX + 6, y: minY - 8, style: '--c:' + UI.ink(def.color, 4.5) }, 'segment-label' + (faded ? ' faded' : ''));
       label.textContent = def.name + (def.cidr && def.cidr !== def.name ? '  ' + def.cidr : '');
       el.appendChild(label);
     });
@@ -1207,9 +1207,9 @@
     if (l.medium === 'tunnel') {
       const iface = (g.ea.iface && g.ea.iface.overlayId ? g.ea.iface : g.eb.iface);
       const o = iface && this.state().overlays.find((x) => x.id === iface.overlayId);
-      if (o) return o.color;
+      if (o) return UI.ink(o.color, 3);
     }
-    return (MEDIA[l.medium] || MEDIA.ethernet).color;
+    return UI.ink((MEDIA[l.medium] || MEDIA.ethernet).color, 3);
   };
 
   Topology.prototype._drawLink = function (g) {
