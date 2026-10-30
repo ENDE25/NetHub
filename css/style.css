@@ -47,10 +47,10 @@
   --endpoint-bg: linear-gradient(180deg, #172540, #121c32);
   --endpoint-edge: #2c4272;
   --endpoint-edge-hover: #3f5c9a;
-  --gateway-bg: linear-gradient(180deg, #2e1b1f, #241619);
-  --gateway-edge: #62323a;
-  --gateway-edge-hover: #8c4a53;
-  --gateway-flat: #2e1b1f;
+  --gateway-bg: linear-gradient(180deg, #1f3a78, #182d5e);
+  --gateway-edge: #3f64b8;
+  --gateway-edge-hover: #5b82d6;
+  --gateway-flat: #1f3a78;
   --endpoint-flat: #172540;
   --scrim: rgba(6, 8, 11, 0.55);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35);
@@ -112,10 +112,10 @@
   --endpoint-bg: linear-gradient(#e6efff, #e6efff);
   --endpoint-edge: #a9c2f2;
   --endpoint-edge-hover: #8aa8e6;
-  --gateway-bg: linear-gradient(#fde6e8, #fde6e8);
-  --gateway-edge: #f0b5bb;
-  --gateway-edge-hover: #e58a94;
-  --gateway-flat: #fde6e8;
+  --gateway-bg: linear-gradient(#d2e0fb, #d2e0fb);
+  --gateway-edge: #7f9fe6;
+  --gateway-edge-hover: #5f85dc;
+  --gateway-flat: #d2e0fb;
   --endpoint-flat: #e4edff;
   --scrim: rgba(27, 36, 50, 0.35);
 
