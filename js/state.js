@@ -162,7 +162,7 @@
       };
     },
     service(name, port) {
-      return { id: uuid(), name: name || '', port: port || '', proto: 'tcp', url: '', notes: '' };
+      return { id: uuid(), name: name || '', port: port || '', proto: 'tcp', url: '', icon: '', notes: '' };
     },
     link(a, b) {
       return { id: uuid(), a, b, medium: 'ethernet', speed: '', label: '', ssid: '', vlans: '', notes: '' };

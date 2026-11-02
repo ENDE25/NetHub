@@ -227,6 +227,7 @@
       o.id = str(s.id) || o.id;
       o.proto = ['tcp', 'udp', ''].includes(s.proto) ? s.proto : 'tcp';
       o.url = str(s.url).trim();
+      o.icon = /^data:image\/[a-z0-9.+-]+;base64,/i.test(str(s.icon)) ? s.icon : '';
       o.notes = str(s.notes);
       return o;
     });

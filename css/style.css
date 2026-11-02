@@ -1003,3 +1003,17 @@ input[type="color"] { width: 64px; height: 36px; padding: 3px; background: var(-
 .node-icon[data-act="mini"] { cursor: pointer; }
 .node-icon[data-act="mini"]:hover { filter: brightness(1.25); }
 .is-mini { min-width: 0; }
+
+/* Service icon, network order buttons, VLAN sub-interfaces */
+.svc-icon { width: 14px; height: 14px; object-fit: contain; flex-shrink: 0; border-radius: 3px; }
+.launch-img { width: 26px; height: 26px; object-fit: contain; }
+.net-row { display: flex; align-items: stretch; }
+.net-row .net-card-head { flex: 1; min-width: 0; width: auto; }
+.net-order { display: flex; flex-direction: column; justify-content: center; padding: 0 0 0 6px; }
+.net-order .icon-btn { width: 22px; height: 18px; }
+.svc-icon-btn { width: 34px; height: 34px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); color: var(--text-faint); display: flex; align-items: center; justify-content: center; flex-shrink: 0; padding: 0; }
+.svc-icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.svc-icon-btn img { width: 24px; height: 24px; object-fit: contain; }
+.svc-card-top { display: flex; gap: 6px; align-items: center; }
+.svc-card-top .svc-card-main { flex: 1; min-width: 0; }
+.iface-card.sub { margin-left: 18px; border-left: 3px solid var(--accent); }

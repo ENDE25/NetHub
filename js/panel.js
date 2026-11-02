@@ -420,12 +420,18 @@
     wrap.className = 'details-pane';
     const isSwitchLike = ['switch', 'ap', 'router', 'firewall', 'modem'].includes(n.type);
     wrap.innerHTML =
-      '<div class="hint-line">Click an interface icon to see MAC, VLAN, gateway, network, bridge and more.</div>' +
+      '<div class="hint-line">Click an interface icon to see MAC, VLAN, gateway, network, bridge and more. To put a node on several VLANs over one cable, add a VLAN sub-interface to that interface: each one has its own IP and network.</div>' +
       '<div class="iface-list" data-role="list"></div>' +
       '<div class="add-row"><button class="btn btn-ghost" data-role="add">' + Icons.svg('plus', 14) + '<span>Add interface</span></button>' +
       (isSwitchLike ? '<button class="btn btn-ghost" data-role="ports">' + Icons.svg('port', 14) + '<span>Generate ports...</span></button>' : '') + '</div>';
     const list = wrap.querySelector('[data-role="list"]');
-    n.interfaces.forEach((i) => list.appendChild(self._ifaceCard(n, i, state, ix)));
+    // VLAN sub-interfaces are drawn right under the interface they hang from
+    const own = new Set(n.interfaces.map((i) => i.id));
+    const subOf = (id) => n.interfaces.filter((i) => i.parent === id && i.kind === 'vlan');
+    n.interfaces.filter((i) => !(i.kind === 'vlan' && i.parent && own.has(i.parent))).forEach((i) => {
+      list.appendChild(self._ifaceCard(n, i, state, ix));
+      subOf(i.id).forEach((c) => list.appendChild(self._ifaceCard(n, c, state, ix, true)));
+    });
     if (!n.interfaces.length) list.innerHTML = '<div class="field-note">This node has no interfaces. Add one to be able to connect it.</div>';
 
     wrap.querySelector('[data-role="add"]').addEventListener('click', (e) => {
@@ -460,12 +466,12 @@
     return wrap;
   };
 
-  Panel.prototype._ifaceCard = function (n, iface, state, ix) {
+  Panel.prototype._ifaceCard = function (n, iface, state, ix, isSub) {
     const self = this;
     const open = this.openIfaces.has(iface.id);
     const kind = Model.ifaceKindMeta(iface.kind);
     const el = document.createElement('div');
-    el.className = 'iface-card' + (open ? ' open' : '');
+    el.className = 'iface-card' + (open ? ' open' : '') + (isSub ? ' sub' : '');
     const connections = state.links.filter((l) => l.a.ifaceId === iface.id || l.b.ifaceId === iface.id).map((l) => {
       const other = l.a.ifaceId === iface.id ? l.b : l.a;
       const o = ix.get(other.nodeId);
@@ -476,7 +482,7 @@
     const parentOpts = [{ v: '', l: 'None' }];
     const par = ix.parent(n.id);
     if (par) par.interfaces.filter((x) => x.kind !== 'tunnel').forEach((x) => parentOpts.push({ v: x.id, l: par.name + ': ' + (x.name || '(unnamed)') + (x.ip ? ' - ' + x.ip : '') }));
-    n.interfaces.filter((x) => x.id !== iface.id && (x.kind === 'bridge' || x.kind === 'bond')).forEach((x) => parentOpts.push({ v: x.id, l: 'This node: ' + (x.name || '(unnamed)') }));
+    n.interfaces.filter((x) => x.id !== iface.id && x.parent !== iface.id && (x.kind === 'bridge' || x.kind === 'bond' || (iface.kind === 'vlan' && x.kind !== 'vlan' && x.kind !== 'tunnel' && x.kind !== 'loopback'))).forEach((x) => parentOpts.push({ v: x.id, l: 'This node: ' + (x.name || '(unnamed)') }));
 
     const netOpts = state.networks.map((x) => ({ v: x.id, l: x.name + (x.cidr && x.cidr !== x.name ? ' (' + x.cidr + ')' : '') }));
     // With DHCP the address is not known, so the network it belongs to is chosen here and the node still shows up in it.
@@ -489,7 +495,7 @@
         '<div class="field-row">' + field('Type', selectHtml('kind', Object.keys(IFACE_KINDS).map((k) => ({ v: k, l: IFACE_KINDS[k].label })), iface.kind)) +
           field('MAC', textInput('mac', iface.mac, 'aa:bb:cc:dd:ee:ff', 'mono')) + '</div>' +
         '<div class="field-row">' + field('Gateway', textInput('gateway', iface.gateway, '192.168.1.1', 'mono')) +
-          field('VLAN', textInput('vlan', iface.vlan, 'ej. 10 o 10,20,30')) + '</div>' +
+          field('VLAN', textInput('vlan', iface.vlan, 'e.g. 10 or 10,20,30')) + '</div>' +
         '<div class="field-row">' + (iface.mode === 'dhcp' ? '' : field('Network', selectHtml('networkId', [{ v: '', l: 'Automatic (from its IP)' }].concat(netOpts), iface.networkId))) +
           field('Speed', selectHtml('speed', [{ v: '', l: '-' }].concat(SPEEDS.map((s) => ({ v: s, l: s }))), iface.speed)) + '</div>' +
         (iface.kind === 'wifi' ? '<div class="field-row">' + field('SSID', textInput('ssid', iface.ssid, 'Wi-Fi network name')) +
@@ -498,6 +504,7 @@
           field('Advertised routes', textInput('routes', iface.routes, '192.168.25.0/24', 'mono'), 'Subnet router: networks reachable through this tunnel') + '</div>' : '') +
         field(iface.parent ? 'Child of (bridge / parent)' : 'Bridge / parent', selectHtml('parent', parentOpts, iface.parent), 'If it hangs from a bridge it needs no cable of its own on the map: it uses the one of the bridge') +
         '<label class="checkbox-row"><input type="checkbox" data-f="shared"' + (iface.shared ? ' checked' : '') + '/><span>Shared virtual IP (VRRP / HSRP): do not warn about duplicates</span></label>' +
+        (iface.kind !== 'vlan' && iface.kind !== 'tunnel' && iface.kind !== 'loopback' ? '<button type="button" class="btn btn-ghost btn-sm" data-act="add-vlan">' + Icons.svg('plus', 13) + '<span>Add VLAN sub-interface</span></button>' : '') +
         (connections.length ? '<div class="field-note">Connected to: ' + esc(connections.join(', ')) + '</div>' : '<div class="field-note">No cable connected.</div>') +
       '</div>';
 
@@ -505,7 +512,7 @@
       '<div class="iface-main">' +
         '<button type="button" class="icon-btn iface-expand' + (open ? ' active' : '') + '" data-act="expand" title="Details">' + Icons.svg(kind.icon, 15) + '</button>' +
         '<input type="text" data-f="name" class="iface-name" value="' + esc(iface.name) + '" placeholder="Name" autocomplete="off" spellcheck="false"/>' +
-        '<input type="text" data-f="ip" class="iface-ip' + (looksLikeBadIp(iface.ip) ? ' invalid' : '') + '" value="' + esc(iface.ip) + '" placeholder="' + (iface.mode === 'dhcp' ? 'Assigned IP (optional)' : 'IP o IP/24') + '" autocomplete="off" spellcheck="false"/>' +
+        '<input type="text" data-f="ip" class="iface-ip' + (looksLikeBadIp(iface.ip) ? ' invalid' : '') + '" value="' + esc(iface.ip) + '" placeholder="' + (iface.mode === 'dhcp' ? 'Assigned IP (optional)' : 'IP or IP/24') + '" autocomplete="off" spellcheck="false"/>' +
         selectHtml('mode', Object.keys(IP_MODES).map((k) => ({ v: k, l: IP_MODES[k] })), iface.mode, 'iface-mode') +
         '<button type="button" class="icon-btn danger" data-act="del" title="Delete interface">' + Icons.svg('close', 13) + '</button>' +
       '</div>' + dhcpLine + details;
@@ -514,8 +521,29 @@
       if (self.openIfaces.has(iface.id)) self.openIfaces.delete(iface.id); else self.openIfaces.add(iface.id);
       self._render();
     });
+    const addVlan = el.querySelector('[data-act="add-vlan"]');
+    if (addVlan) addVlan.addEventListener('click', () => {
+      UI.prompt({ title: 'Add VLAN sub-interface', label: 'VLAN ID (1-4094)', value: '', confirmLabel: 'Add', onConfirm: (v) => {
+        const id = parseInt(v, 10);
+        if (!(id >= 1 && id <= 4094)) { UI.toast('Enter a VLAN ID between 1 and 4094.', 'error'); return; }
+        const sub = Factory.iface((iface.name || 'eth') + '.' + id, 'vlan');
+        sub.vlan = String(id);
+        sub.parent = iface.id;
+        sub.mode = 'static';
+        const net = state.networks.find((x) => String(x.vlan).trim() === String(id));
+        if (net) sub.networkId = net.id;
+        n.interfaces.push(sub);
+        self.openIfaces.add(sub.id);
+        self._changed(n.id, true, null, false);
+      } });
+    });
     el.querySelector('[data-act="del"]').addEventListener('click', () => {
-      n.interfaces = n.interfaces.filter((x) => x.id !== iface.id);
+      // removing an interface also removes the VLAN sub-interfaces that hang from it
+      const gone = new Set([iface.id]);
+      n.interfaces.forEach((x) => { if (x.kind === 'vlan' && x.parent === iface.id) gone.add(x.id); });
+      n.interfaces = n.interfaces.filter((x) => !gone.has(x.id));
+      state.links = state.links.filter((l) => !gone.has(l.a.ifaceId) && !gone.has(l.b.ifaceId));
+
       state.nodes.forEach((x) => x.interfaces.forEach((i) => { if (i.parent === iface.id) i.parent = ''; }));
       state.links = state.links.filter((l) => l.a.ifaceId !== iface.id && l.b.ifaceId !== iface.id);
       self._changed(n.id, true, null, true);
@@ -527,6 +555,10 @@
         if (value.trim() && iface.mode === 'none') iface.mode = 'static';
       }
       const structural = ['kind', 'mode', 'parent', 'networkId', 'overlayId', 'wifiRole'].includes(key);
+      if (key === 'networkId' && value && iface.kind === 'vlan' && !String(iface.vlan).trim()) {
+        const picked = state.networks.find((x) => x.id === value);
+        if (picked && String(picked.vlan).trim()) iface.vlan = String(picked.vlan).trim();
+      }
       if (key === 'kind' && value === 'wifi' && !iface.wifiRole) iface.wifiRole = n.type === 'ap' ? 'ap' : 'client';
       self._changed(n.id, structural, 'iface:' + iface.id + ':' + key);
     });
@@ -551,10 +583,12 @@
       row.className = 'svc-card';
       const bad = s.url && !Model.serviceUrl(s);
       row.innerHTML =
+        '<div class="svc-card-top"><button type="button" class="svc-icon-btn" data-act="icon" title="' + (s.icon ? 'Change icon (right click to remove)' : 'Add an icon') + '">' + (s.icon ? '<img src="' + esc(s.icon) + '" alt=""/>' : Icons.svg('image', 15)) + '</button>' +
+        '<input type="file" data-role="svc-icon-input" accept="image/*" hidden/>' +
         '<div class="svc-card-main"><input type="text" data-f="name" value="' + esc(s.name) + '" placeholder="Service" autocomplete="off"/>' +
         '<input type="text" data-f="port" class="svc-port-in" value="' + esc(s.port) + '" placeholder="Port" autocomplete="off"/>' +
         selectHtml('proto', [{ v: 'tcp', l: 'TCP' }, { v: 'udp', l: 'UDP' }, { v: '', l: '-' }], s.proto, 'svc-proto') +
-        '<button class="icon-btn danger" data-act="del" title="Remove">' + Icons.svg('close', 13) + '</button></div>' +
+        '<button class="icon-btn danger" data-act="del" title="Remove">' + Icons.svg('close', 13) + '</button></div></div>' +
         '<div class="svc-card-url"><input type="text" data-f="url" class="mono' + (bad ? ' invalid' : '') + '" value="' + esc(s.url) + '" placeholder="https://192.168.1.1:8443" autocomplete="off" spellcheck="false"/>' +
         '<button class="icon-btn" data-act="open" title="Open"' + (Model.serviceUrl(s) ? '' : ' disabled') + '>' + Icons.svg('externalLink', 14) + '</button></div>';
       bindFields(row, s, (key, value, el) => {
@@ -564,6 +598,15 @@
           row.querySelector('[data-act="open"]').disabled = !Model.serviceUrl(s);
         }
         self._changed(n.id, false, 'svc:' + s.id + ':' + key);
+      });
+      const iconBtn = row.querySelector('[data-act="icon"]');
+      const iconInput = row.querySelector('[data-role="svc-icon-input"]');
+      iconBtn.addEventListener('click', () => iconInput.click());
+      iconBtn.addEventListener('contextmenu', (e) => { if (!s.icon) return; e.preventDefault(); s.icon = ''; self._changed(n.id, true); });
+      iconInput.addEventListener('change', () => {
+        const file = iconInput.files && iconInput.files[0];
+        if (!file) return;
+        self._readImageAsDataUrl(file, 96, (url) => { if (url) { s.icon = url; self._changed(n.id, true); } });
       });
       row.querySelector('[data-act="del"]').addEventListener('click', () => { n.services = n.services.filter((x) => x.id !== s.id); self._changed(n.id, true); });
       row.querySelector('[data-act="open"]').addEventListener('click', () => { const u = Model.serviceUrl(s); if (u) window.open(u, '_blank', 'noopener'); });

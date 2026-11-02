@@ -347,7 +347,7 @@
     const overlays = Model.overlaysOfNode(state, n);
     const nets = Model.networksOfNode(state, n);
     const urls = Model.nodeUrls(n);
-    const ring = ringStyle(overlays);
+    const ring = layer === 'overlay' ? ringStyle(overlays) : null;
     const isIsp = n.type === 'isp' && depth === 0;
     const el = document.createElement('div');
     el.dataset.nodeId = n.id;
@@ -400,7 +400,7 @@
         ? '<div class="node-services">' + n.services.slice(0, 6).map((s) => {
             const u = Model.serviceUrl(s);
             return '<div class="svc-row' + (u ? ' has-url' : '') + '"' + (u ? ' data-act="open" data-url="' + esc(u) + '" title="' + esc(u) + '"' : '') + '>' +
-              '<span class="svc-name">' + esc(s.name || 'Service') + '</span>' + (s.port ? '<span class="svc-port">' + esc(s.port) + '</span>' : '') +
+              (s.icon ? '<img class="svc-icon" src="' + esc(s.icon) + '" alt=""/>' : '') + '<span class="svc-name">' + esc(s.name || 'Service') + '</span>' + (s.port ? '<span class="svc-port">' + esc(s.port) + '</span>' : '') +
               (u ? Icons.svg('externalLink', 11) : '') + '</div>';
           }).join('') + (n.services.length > 6 ? '<div class="svc-more">+' + (n.services.length - 6) + ' more</div>' : '') + '</div>'
         : '<div class="svc-empty">No services</div>';
@@ -410,7 +410,7 @@
     if (layer === 'services') {
       foot = '';  // each service row already opens its own URL
     } else if (urls.length === 1) {
-      foot = '<button type="button" class="panel-badge" data-act="open" data-url="' + esc(urls[0].url) + '" title="' + esc(urls[0].name + ' - ' + urls[0].url) + '">' + Icons.svg('externalLink', 11) + esc(urls[0].name.length > 14 ? 'Panel' : urls[0].name) + '</button>';
+      foot = '<button type="button" class="panel-badge" data-act="open" data-url="' + esc(urls[0].url) + '" title="' + esc(urls[0].name + ' - ' + urls[0].url) + '">' + (urls[0].service && urls[0].service.icon ? '<img class="svc-icon" src="' + esc(urls[0].service.icon) + '" alt=""/>' : Icons.svg('externalLink', 11)) + esc(urls[0].name.length > 14 ? 'Panel' : urls[0].name) + '</button>';
     } else if (urls.length > 1) {
       foot = '<button type="button" class="panel-badge" data-act="menu" title="Open a panel">' + Icons.svg('externalLink', 11) + 'Panels (' + urls.length + ')' + Icons.svg('chevronDown', 10) + '</button>';
     }

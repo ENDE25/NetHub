@@ -233,18 +233,28 @@
     const netsHead = el('div', 'stack-title', 'Networks (' + state.networks.length + ')');
     body.appendChild(netsHead);
     if (!state.networks.length) body.appendChild(el('div', 'empty-card', 'No networks yet. Create one or use "Detect networks" to generate them from the IPs of your interfaces.'));
-    state.networks.forEach((net) => {
+    state.networks.forEach((net, idx) => {
       const a = Ipam.analyze(state, net);
       const open = ui.openNet === net.id;
       const card = el('div', 'net-card' + (open ? ' open' : ''));
       card.style.setProperty('--c', UI.ink(net.color, 3));
       card.innerHTML =
+        '<div class="net-row"><div class="net-order"><button type="button" class="icon-btn" data-move="-1" title="Move up"' + (idx === 0 ? ' disabled' : '') + '>' + Icons.svg('chevronUp', 13) + '</button>' +
+        '<button type="button" class="icon-btn" data-move="1" title="Move down"' + (idx === state.networks.length - 1 ? ' disabled' : '') + '>' + Icons.svg('chevronDown', 13) + '</button></div>' +
         '<button type="button" class="net-card-head"><span class="net-color"></span>' +
         '<span class="net-name">' + esc(net.name) + (net.inferred ? '<span class="badge warn">inferred</span>' : '') + '</span>' +
         '<span class="net-meta mono">' + esc(net.cidr && net.cidr !== net.name ? net.cidr : (net.cidr ? '' : 'no CIDR')) + '</span>' +
         (net.vlan ? '<span class="badge">VLAN ' + esc(net.vlan) + '</span>' : '') +
         '<span class="net-use">' + (a.valid ? '<span class="ipam-bar small"><span class="ipam-fill" style="width:' + a.pct + '%"></span></span><span class="net-use-text">' + a.usedCount + '/' + a.usable + '</span>' : '') + '</span>' +
-        Icons.svg(open ? 'chevronUp' : 'chevronDown', 14) + '</button>';
+        Icons.svg(open ? 'chevronUp' : 'chevronDown', 14) + '</button></div>';
+      card.querySelectorAll('[data-move]').forEach((b) => b.addEventListener('click', () => {
+        const to = idx + parseInt(b.dataset.move, 10);
+        if (to < 0 || to >= state.networks.length) return;
+        state.networks.splice(to, 0, state.networks.splice(idx, 1)[0]);
+        ctx.commit('net-order');
+        ctx.onChanged({ data: true });
+        renderNetworks(container, ctx);
+      }));
       card.querySelector('.net-card-head').addEventListener('click', () => { ui.openNet = open ? null : net.id; renderNetworks(container, ctx); });
       if (open) {
         const form = Forms.networkForm(state, net, {
@@ -285,7 +295,7 @@
       const card = el('div', 'net-card' + (open ? ' open' : ''));
       card.style.setProperty('--c', UI.ink(ov.color, 3));
       card.innerHTML = '<button type="button" class="net-card-head"><span class="net-color"></span><span class="net-name">' + esc(ov.name) + '</span>' +
-        '<span class="net-meta mono">' + esc(ov.cidr || '') + '</span><span class="net-use"><span class="net-use-text">' + members.length + ' miembros</span></span>' + Icons.svg(open ? 'chevronUp' : 'chevronDown', 14) + '</button>';
+        '<span class="net-meta mono">' + esc(ov.cidr || '') + '</span><span class="net-use"><span class="net-use-text">' + members.length + ' members</span></span>' + Icons.svg(open ? 'chevronUp' : 'chevronDown', 14) + '</button>';
       card.querySelector('.net-card-head').addEventListener('click', () => { ui.openOverlay = open ? null : ov.id; renderNetworks(container, ctx); });
       if (open) {
         const form = Forms.overlayForm(state, ov, {
@@ -377,7 +387,7 @@
       groups.get(k).sort((a, b) => collator.compare(a.n.name + a.u.name, b.n.name + b.u.name)).forEach((it) => {
         const meta = Model.typeMeta(it.n.type);
         const tile = el('div', 'launch-tile');
-        tile.innerHTML = '<a class="launch-main" href="' + esc(it.u.url) + '" target="_blank" rel="noopener noreferrer"><span class="launch-icon">' + Icons.svg(meta.icon, 18) + '</span>' +
+        tile.innerHTML = '<a class="launch-main" href="' + esc(it.u.url) + '" target="_blank" rel="noopener noreferrer"><span class="launch-icon">' + (it.u.service && it.u.service.icon ? '<img class="launch-img" src="' + esc(it.u.service.icon) + '" alt=""/>' : Icons.svg(meta.icon, 18)) + '</span>' +
           '<span class="launch-text"><span class="launch-title">' + esc(it.u.name) + '</span><span class="launch-sub">' + esc(it.n.name + (it.n.role ? ' · ' + it.n.role : '')) + '</span>' +
           '<span class="launch-url mono">' + esc(it.u.url.replace(/^https?:\/\//, '')) + '</span></span>' + Icons.svg('externalLink', 14) + '</a>' +
           '<button type="button" class="icon-btn" title="View node">' + Icons.svg('chevronRight', 14) + '</button>';
