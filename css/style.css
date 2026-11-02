@@ -455,7 +455,7 @@ kbd {
 .lg-line.m-virtual { border-top-style: dotted; }
 .lg-line.m-tunnel { border-top-style: dashed; }
 .lg-line.m-fiber { border-top-width: 3px; }
-.lg-line.nested { border-top: 2px dashed var(--nested); }
+.lg-line.nested { border-top: 2px solid var(--nested); }
 .lg-swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; background: var(--card-bg); border: 1px solid var(--card-edge); }
 .lg-swatch.gateway { --card-bg: var(--gateway-flat); --card-edge: var(--gateway-edge); }
 .lg-swatch.endpoint { --card-bg: var(--endpoint-flat); --card-edge: var(--endpoint-edge); }
@@ -464,13 +464,13 @@ kbd {
 
 .link-line { fill: none; stroke: var(--blue); stroke-width: 2; pointer-events: none; transition: stroke-width 0.12s; }
 .link-g.m-wifi .link-line { stroke-dasharray: 7 6; animation: link-dash-flow 0.9s linear infinite; }
-.link-g.m-virtual .link-line { stroke-dasharray: 1 5; stroke-linecap: round; stroke-width: 2.4; }
+.link-g.m-virtual .link-line { stroke-width: 2; }
 .link-g.m-tunnel .link-line { stroke-dasharray: 9 4; }
 .link-g.m-fiber .link-line { stroke-width: 3; }
 .link-g.m-usb .link-line { stroke-width: 1.5; }
 @keyframes link-dash-flow { to { stroke-dashoffset: -13; } }
 /* Cables of VMs/containers that live inside another machine: grey and dashed */
-.link-g.nested .link-line { stroke: var(--nested) !important; stroke-dasharray: 6 5; stroke-linecap: butt; stroke-width: 2; animation: none; }
+.link-g.nested .link-line { stroke: var(--nested) !important; stroke-dasharray: none; stroke-width: 2; animation: none; }
 /* a nested wireless cable stays grey but keeps the flowing animation (dash length 7+6 matches the animation offset) */
 .link-g.nested.m-wifi .link-line { stroke-dasharray: 7 6; animation: link-dash-flow 0.9s linear infinite; }
 .link-g.hot .link-line { stroke-width: 3; }
