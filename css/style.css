@@ -1028,3 +1028,7 @@ input[type="color"] { width: 64px; height: 36px; padding: 3px; background: var(-
 .svc-card-top { display: flex; gap: 6px; align-items: center; }
 .svc-card-top .svc-card-main { flex: 1; min-width: 0; }
 .iface-card.sub { margin-left: 18px; border-left: 3px solid var(--accent); }
+/* gateways are darker: keep secondary text readable on them */
+:root[data-theme="light"] .is-gateway .node-type,
+:root[data-theme="light"] .is-gateway .node-os { color: var(--text-dim); }
+:root[data-theme="light"] .is-gateway .panel-badge { color: var(--accent-strong); }
