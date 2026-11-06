@@ -35,6 +35,8 @@
   --radius-lg: 18px;
 
   --border-strong-hover: #3a4759;
+  --child-edge: var(--border);
+  --foot-line: var(--border);
   --node-bg: linear-gradient(180deg, var(--bg-elevated), var(--surface));
   --node-child-bg: var(--node-bg);
   --on-danger: #1a0d0c;
@@ -78,6 +80,8 @@
   --chrome: #eef0f5;
   --node-bg: linear-gradient(#f4f6f9, #f4f6f9);
   --node-child-bg: linear-gradient(#eef1f5, #eef1f5);
+  --child-edge: #d3d9e2;
+  --foot-line: #dde2ea;
   --bg-elevated: #ffffff;
   --surface: #ffffff;
   --surface-hover: #edf0f6;
@@ -580,7 +584,7 @@ kbd {
 /* Card colour families: default, end-user devices (soft blue) and, in the logical layer, gateways (soft red) */
 .node, .node-child { --card-bg: var(--node-bg); --card-edge: var(--border-strong); --card-edge-hover: var(--border-strong-hover); }
 .node-child { --card-bg: var(--node-child-bg); }
-.node-child { --card-edge: var(--border); --card-edge-hover: var(--border-strong); }
+.node-child { --card-edge: var(--child-edge); --card-edge-hover: var(--border-strong); }
 .node.is-endpoint, .node-child.is-endpoint { --card-bg: var(--endpoint-bg); --card-edge: var(--endpoint-edge); --card-edge-hover: var(--endpoint-edge-hover); }
 .node.is-gateway, .node-child.is-gateway { --card-bg: var(--gateway-bg); --card-edge: var(--gateway-edge); --card-edge-hover: var(--gateway-edge-hover); }
 
@@ -625,7 +629,7 @@ kbd {
 .svc-port { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-faint); }
 .svc-empty, .svc-more { margin-top: 8px; font-size: 11px; color: var(--text-faint); }
 
-.node-foot { display: flex; align-items: center; justify-content: flex-end; margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--border); }
+.node-foot { display: flex; align-items: center; justify-content: flex-end; margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--foot-line); }
 .panel-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 3px 7px; border-radius: 6px; border: none; cursor: pointer; transition: background 0.15s; }
 .panel-badge:hover { background: var(--accent-soft); filter: brightness(0.95); }
 

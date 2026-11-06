@@ -52,7 +52,10 @@
   }
   // the old default teal of the dark theme is shown as a stronger green
   const LEGACY = { '#2ad9b8': '#22c55e' };
+  // colours chosen on purpose that are shown exactly as given (Wi-Fi green)
+  const EXACT = ['#51db58'];
   function ink(hex, ratio) {
+    if (EXACT.includes(String(hex).toLowerCase())) return hex;
     hex = LEGACY[String(hex).toLowerCase()] || hex;
     const c = rgb(hex);
     if (!c) return hex;

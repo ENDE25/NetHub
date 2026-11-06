@@ -70,7 +70,7 @@
   const MEDIA = {
     ethernet: { label: 'Ethernet (copper)', color: '#5b8cff' },
     fiber:    { label: 'Fiber',            color: '#c084fc' },
-    wifi:     { label: 'Wi-Fi',            color: '#22c55e' },
+    wifi:     { label: 'Wi-Fi',            color: '#51db58' },
     virtual:  { label: 'Virtual',          color: '#7a8699' },
     tunnel:   { label: 'Tunnel / VPN',      color: '#f0b642' },
     usb:      { label: 'USB / serial',      color: '#94a3b8' }
