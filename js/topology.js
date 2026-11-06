@@ -1058,6 +1058,7 @@
     if (layer !== 'logical' && layer !== 'overlay') return;
     const state = this.state();
     const defs = layer === 'logical' ? state.networks : state.overlays;
+    const labels = [];
     defs.forEach((def) => {
       const pts = [];
       state.nodes.forEach((n) => {
@@ -1079,6 +1080,21 @@
       const label = svgEl('text', { x: minX + 6, y: minY - 8, style: '--c:' + UI.ink(def.color, 4.5) }, 'segment-label' + (faded ? ' faded' : ''));
       label.textContent = def.name + (def.cidr && def.cidr !== def.name ? '  ' + def.cidr : '');
       el.appendChild(label);
+      labels.push({ label, x: minX + 6, y: minY - 8 });
+    });
+
+    // Labels of different segments can land on the same spot (hulls that share a corner): stack them upwards.
+    const LINE = 20;
+    const placed = [];
+    labels.forEach((it) => {
+      let w = 0;
+      try { w = it.label.getBBox().width; } catch (e) { /* not rendered yet */ }
+      if (!w) w = it.label.textContent.length * 7.8;
+      const hits = (y) => placed.some((o) => it.x < o.x + o.w + 6 && it.x + w + 6 > o.x && Math.abs(y - o.y) < LINE);
+      let y = it.y, guard = 0;
+      while (hits(y) && guard++ < 20) y -= LINE;
+      if (y !== it.y) it.label.setAttribute('y', y);
+      placed.push({ x: it.x, w, y });
     });
   };
 
