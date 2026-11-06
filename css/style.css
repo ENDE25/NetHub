@@ -120,10 +120,10 @@
   --endpoint-bg: linear-gradient(#e6efff, #e6efff);
   --endpoint-edge: #a9c2f2;
   --endpoint-edge-hover: #8aa8e6;
-  --gateway-bg: linear-gradient(#d2e0fb, #d2e0fb);
-  --gateway-edge: #7f9fe6;
-  --gateway-edge-hover: #5f85dc;
-  --gateway-flat: #d2e0fb;
+  --gateway-bg: linear-gradient(#bfd2f7, #bfd2f7);
+  --gateway-edge: #6a8fe0;
+  --gateway-edge-hover: #4f78d6;
+  --gateway-flat: #bfd2f7;
   --endpoint-flat: #e4edff;
   --scrim: rgba(27, 36, 50, 0.35);
 
@@ -200,7 +200,9 @@ kbd {
 }
 .topbar-spacer { flex: 1; }
 
-.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; letter-spacing: 0.2px; flex-shrink: 0; }
+.brand { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.brand-word { font-family: 'SF Pro Display', 'Segoe UI Variable Display', 'Avenir Next', 'Helvetica Neue', 'Segoe UI', system-ui, sans-serif; font-size: 18px; font-weight: 300; letter-spacing: 0.04em; color: var(--text); }
+.brand-word b { font-weight: 600; color: var(--accent); }
 .brand .icon { color: var(--accent); }
 
 .map-switch {

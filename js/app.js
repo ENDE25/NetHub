@@ -69,7 +69,7 @@
 
   function buildChrome() {
     $('btn-library').innerHTML = Icons.svg('panelLeft', 18);
-    $('brand-logo').innerHTML = Icons.svg('network', 22) + '<span>NetHub</span>';
+    $('brand-logo').innerHTML = Icons.svg('network', 22) + '<span class="brand-word"><b>Net</b>Hub</span>';
     $('btn-undo').innerHTML = Icons.svg('undo', 16);
     $('btn-redo').innerHTML = Icons.svg('redo', 16);
     $('btn-menu').innerHTML = Icons.svg('menu', 18);
@@ -83,6 +83,22 @@
 
     $('layer-switch').innerHTML = LAYERS.map((l) => '<button type="button" class="layer-btn" data-layer="' + l.id + '" title="' + esc(l.hint) + '">' + esc(l.label) + '</button>').join('');
     $('layer-switch').querySelectorAll('[data-layer]').forEach((b) => b.addEventListener('click', () => setLayer(b.dataset.layer)));
+    // the wheel over a selector steps through its options (the canvas does not zoom meanwhile)
+    const wheelStep = (el, ids, current, apply) => {
+      let last = 0;
+      el.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const now = Date.now();
+        if (now - last < 140 || !e.deltaY) return;
+        last = now;
+        const i = ids.indexOf(current());
+        const next = Math.max(0, Math.min(ids.length - 1, i + (e.deltaY > 0 ? 1 : -1)));
+        if (next !== i) apply(ids[next]);
+      }, { passive: false });
+    };
+    wheelStep($('view-tabs'), VIEWS.map((v) => v.id), () => currentView, setView);
+    wheelStep($('layer-switch'), LAYERS.map((l) => l.id), () => getState().view.layer, setLayer);
 
     $('zoom-controls').innerHTML =
       '<button class="icon-btn" data-z="out" title="Zoom out">' + Icons.svg('zoomOut', 16) + '</button>' +
