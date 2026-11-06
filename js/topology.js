@@ -647,8 +647,8 @@
     } else if (this.connectCtx || this.replugCtx) {
       const ctx = this.connectCtx || this.replugCtx;
       const w = this.screenToWorld(e.clientX, e.clientY);
-      ctx.line.setAttribute('x2', w.x);
-      ctx.line.setAttribute('y2', w.y);
+      if (ctx.update) ctx.update(w);
+      else { ctx.line.setAttribute('x2', w.x); ctx.line.setAttribute('y2', w.y); }
       this._updateConnectHover(ctx, e.clientX, e.clientY);
     }
   };
@@ -1362,7 +1362,37 @@
     const otherId = link[otherRole].nodeId;
     const ownId = link[role].nodeId;
     const g = this.geoms.find((x) => x.link.id === link.id);
-    this.replugCtx = { link, role, excludeId: otherId, line: this._startLine(ownId, g ? (role === 'a' ? g.sideA : g.sideB) : 'right', e), hoverEl: null };
+    if (!g) {
+      this.replugCtx = { link, role, excludeId: otherId, line: this._startLine(ownId, 'right', e), hoverEl: null };
+      return;
+    }
+    // The whole cable follows the pointer: the other end stays where it is and the line keeps its own look
+    // (colour, medium, style), so it reads as moving the connection and not as drawing a new one.
+    const pFixed = role === 'a' ? g.pB : g.pA, dFixed = role === 'a' ? g.dB : g.dA;
+    const style = g.style;
+    const ghost = svgEl('g', {}, 'link-g m-' + link.medium + ' selected' + (g.nested ? ' nested' : ''));
+    const path = svgEl('path', { d: g.d, style: 'stroke:' + this._linkColor(g) }, 'link-line');
+    ghost.appendChild(path);
+    this.linksAbove.appendChild(ghost);
+    const orig = this.linksAbove.querySelector('[data-id="' + link.id + '"]') || this.linksBehind.querySelector('[data-id="' + link.id + '"]');
+    if (orig) orig.style.visibility = 'hidden';
+    this.linksAbove.querySelectorAll('.link-handle').forEach((h) => h.remove());
+    const update = (w) => {
+      const dx = pFixed.x - w.x, dy = pFixed.y - w.y;
+      const dFree = Math.abs(dx) > Math.abs(dy) ? { x: Math.sign(dx) || 1, y: 0 } : { x: 0, y: Math.sign(dy) || 1 };
+      let d;
+      if (style === 'orthogonal') {
+        d = roundedPath(orthoPoints(pFixed, dFixed, w, dFree), 9);
+      } else if (style === 'curved') {
+        const k = Math.max(40, Math.hypot(w.x - pFixed.x, w.y - pFixed.y) * 0.4);
+        d = 'M' + pFixed.x + ' ' + pFixed.y + ' C' + (pFixed.x + dFixed.x * k) + ' ' + (pFixed.y + dFixed.y * k) + ' ' + (w.x + dFree.x * k) + ' ' + (w.y + dFree.y * k) + ' ' + w.x + ' ' + w.y;
+      } else {
+        d = 'M' + pFixed.x + ' ' + pFixed.y + ' L' + w.x + ' ' + w.y;
+      }
+      path.setAttribute('d', d);
+    };
+    update(this.screenToWorld(e.clientX, e.clientY));
+    this.replugCtx = { link, role, excludeId: otherId, line: ghost, update, hoverEl: null };
   };
 
   Topology.prototype._finishReplug = function (e) {
