@@ -35,6 +35,8 @@
   --radius-lg: 18px;
 
   --border-strong-hover: #3a4759;
+  --node-bg: linear-gradient(180deg, var(--bg-elevated), var(--surface));
+  --node-child-bg: var(--node-bg);
   --on-danger: #1a0d0c;
   --on-amber: #1f1606;
   --nested: #6f7b8d;
@@ -74,6 +76,8 @@
   --bg: #ffffff;
   --bg-soft: #f6f7fa;
   --chrome: #eef0f5;
+  --node-bg: linear-gradient(#f4f6f9, #f4f6f9);
+  --node-child-bg: linear-gradient(#eef1f5, #eef1f5);
   --bg-elevated: #ffffff;
   --surface: #ffffff;
   --surface-hover: #edf0f6;
@@ -574,7 +578,8 @@ kbd {
 .node.has-vpn-ips { padding-bottom: 30px; }
 
 /* Card colour families: default, end-user devices (soft blue) and, in the logical layer, gateways (soft red) */
-.node, .node-child { --card-bg: linear-gradient(180deg, var(--bg-elevated), var(--surface)); --card-edge: var(--border-strong); --card-edge-hover: var(--border-strong-hover); }
+.node, .node-child { --card-bg: var(--node-bg); --card-edge: var(--border-strong); --card-edge-hover: var(--border-strong-hover); }
+.node-child { --card-bg: var(--node-child-bg); }
 .node-child { --card-edge: var(--border); --card-edge-hover: var(--border-strong); }
 .node.is-endpoint, .node-child.is-endpoint { --card-bg: var(--endpoint-bg); --card-edge: var(--endpoint-edge); --card-edge-hover: var(--endpoint-edge-hover); }
 .node.is-gateway, .node-child.is-gateway { --card-bg: var(--gateway-bg); --card-edge: var(--gateway-edge); --card-edge-hover: var(--gateway-edge-hover); }
